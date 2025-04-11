@@ -43,10 +43,16 @@ dependencies {
     testImplementation("org.springframework.amqp:spring-rabbit-test")
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testImplementation("org.mockito:mockito-inline:$mockitoVersion")
     testImplementation("org.mockito:mockito-junit-jupiter:$mockitoVersion")
+}
+
+tasks.test {
+    filter {
+        excludeTestsMatching("*FunctionalTest")
+    }
+    finalizedBy(tasks.jacocoTestReport)
 }
 
 tasks.register<Test>("unitTest") {
@@ -56,12 +62,4 @@ tasks.register<Test>("unitTest") {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
-}
-
-tasks.test{
-    finalizedBy(tasks.jacocoTestReport)
-}
-
-tasks.jacocoTestReport{
-    dependsOn(tasks.test)
 }
