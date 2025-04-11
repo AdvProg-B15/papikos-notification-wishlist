@@ -1,7 +1,9 @@
-plugins {
-    java
+
+plugins { java
+    jacoco
     id("org.springframework.boot") version "3.4.4"
     id("io.spring.dependency-management") version "1.1.7"
+    id("java")
 }
 
 group = "id.ac.ui.cs.advprog.papikos"
@@ -22,6 +24,8 @@ configurations {
 repositories {
     mavenCentral()
 }
+val junitJupiterVersion = "5.9.1"
+val mockitoVersion = "5.2.0"
 
 dependencies {
     implementation ("jakarta.validation:jakarta.validation-api:3.0.2")
@@ -41,8 +45,25 @@ dependencies {
     testImplementation("org.springframework.amqp:spring-rabbit-test")
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+    testImplementation("org.mockito:mockito-inline:$mockitoVersion")
+    testImplementation("org.mockito:mockito-junit-jupiter:$mockitoVersion")
 }
 
-tasks.withType<Test> {
+tasks.register<Test>("unitTest") {
+    description = "Runs unit tests."
+    group = "verification"
+}
+
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+}
+
+tasks.test{
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport{
+    dependsOn(tasks.test)
 }
