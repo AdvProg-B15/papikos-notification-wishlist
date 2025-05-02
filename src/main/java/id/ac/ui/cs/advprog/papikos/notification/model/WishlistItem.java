@@ -10,40 +10,32 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.Instant;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "wishlist_items", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"tenantUserId", "propertyId"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class Notification {
+public class WishlistItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long notificationId;
-
-    @Column // Nullable for broadcast
-    private Long recipientUserId; // Logical FK to User in Auth Service
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
-    private NotificationType notificationType;
-
-    @Column(nullable = false, length = 255)
-    private String title;
-
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String message;
+    private Long wishlistItemId;
 
     @Column(nullable = false)
-    private boolean isRead = false;
+    private Long tenantUserId; // Logical FK to User in Auth Service
 
-    @Column // Nullable
-    private Long relatedPropertyId; // Logical FK to Property Service
-
-    @Column // Nullable
-    private Long relatedRentalId; // Logical FK to Rental Service
+    @Column(nullable = false)
+    private Long propertyId; // Logical FK to Property in Property Service
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
+
+    // Constructor for service layer usage
+    public WishlistItem(Long tenantUserId, Long propertyId) {
+        this.tenantUserId = tenantUserId;
+        this.propertyId = propertyId;
+    }
 }
