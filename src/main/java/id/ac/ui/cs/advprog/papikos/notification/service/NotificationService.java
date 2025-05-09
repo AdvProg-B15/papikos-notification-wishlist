@@ -30,7 +30,7 @@ public class NotificationService {
 
     private final WishlistItemRepository wishlistItemRepository;
     private final NotificationRepository notificationRepository;
-    private final PropertyServiceClient propertyServiceClient; 
+    private final PropertyServiceClient propertyServiceClient = new PropertyServiceClient();
 
 
     @Transactional
@@ -83,6 +83,10 @@ public class NotificationService {
         }).collect(Collectors.toList());
     }
 
+    @Transactional
+    public void sendUserNotification(String recipientId, NotificationType type, String title, String message, Object something, String relatedId) {
+
+    }
     @Transactional
     public void removeFromWishlist(String tenantUserId, String propertyId) {
         log.info("Tenant {} attempting to remove property {} from wishlist", tenantUserId, propertyId);

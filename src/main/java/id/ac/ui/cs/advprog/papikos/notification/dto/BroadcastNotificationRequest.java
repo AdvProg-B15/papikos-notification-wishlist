@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.papikos.notification.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -10,9 +10,9 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class BroadcastNotificationRequest {
 
-    @NotBlank(message = "Notification title cannot be blank")
+//    @NotBlank(message = "Notification title cannot be blank")
     private String title;
 
-    @NotBlank(message = "Notification message cannot be blank")
+//    @NotBlank(message = "Notification message cannot be blank")
     private String message;
 }

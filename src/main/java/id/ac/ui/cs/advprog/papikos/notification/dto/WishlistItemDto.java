@@ -22,5 +22,9 @@ public class WishlistItemDto {
     private PropertySummaryDto property; // Embedded summary of the wishlisted property
 
     private Instant createdAt; // Timestamp when the item was added
+
+    public String getPropertyId() {
+        return property.getPropertyId();
+    }
 }
 

@@ -35,7 +35,7 @@ public class NotificationDto {
 
     private Instant createdAt;
 
-    public static NotificationDto(String notificationId, NotificationType notificationType, String title, String message, boolean isRead, String relatedPropertyId, String relatedRentalId, Instant createdAt) {
+    public NotificationDto(String notificationId, NotificationType notificationType, String title, String message, boolean isRead, String relatedPropertyId, String relatedRentalId, Instant createdAt) {
 
     }
 

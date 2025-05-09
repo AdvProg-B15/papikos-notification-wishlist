@@ -1,8 +1,6 @@
 package id.ac.ui.cs.advprog.papikos.notification.service;
 
-import id.ac.ui.cs.advprog.papikos.notification.dto.AddToWishlistRequest;
-import id.ac.ui.cs.advprog.papikos.notification.dto.BroadcastNotificationRequest;
-import id.ac.ui.cs.advprog.papikos.notification.dto.PropertyBasicInfoDto; // Assume DTO from Property Service client
+import id.ac.ui.cs.advprog.papikos.notification.dto.*;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ConflictException;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ResourceNotFoundException;
 import id.ac.ui.cs.advprog.papikos.notification.model.Notification;
@@ -12,6 +10,8 @@ import id.ac.ui.cs.advprog.papikos.notification.repository.NotificationRepositor
 import id.ac.ui.cs.advprog.papikos.notification.repository.WishlistItemRepository;
 import id.ac.ui.cs.advprog.papikos.notification.client.PropertyServiceClient; // Mocked client interface
 
+import java.util.TimeZone;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,10 +23,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -80,7 +82,7 @@ class NotificationServiceTest {
         wishlistItem1.setWishlistItemId(wishlistItemId1);
         wishlistItem1.setTenantUserId(tenantUserId);
         wishlistItem1.setPropertyId(propertyId1);
-        wishlistItem1.setCreatedAt(LocalDateTime.now());
+        wishlistItem1.setCreatedAt(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
 
         notification1 = new Notification();
         notification1.setNotificationId(notificationId1);
@@ -89,7 +91,7 @@ class NotificationServiceTest {
         notification1.setTitle("Test Notification");
         notification1.setMessage("Your rental status updated.");
         notification1.setRead(false);
-        notification1.setCreatedAt(LocalDateTime.now());
+        notification1.setCreatedAt(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
     }
 
     // --- Wishlist Tests ---
@@ -110,7 +112,7 @@ class NotificationServiceTest {
             return item;
         });
 
-        WishlistItem savedItem = notificationService.addToWishlist(tenantUserId, request);
+        WishlistItemDto savedItem = notificationService.addToWishlist(tenantUserId, request);
 
         assertNotNull(savedItem);
         assertEquals(tenantUserId, savedItem.getTenantUserId());
@@ -164,9 +166,12 @@ class NotificationServiceTest {
         wishlistItem2.setTenantUserId(tenantUserId);
         wishlistItem2.setPropertyId(propertyId2);
 
-        when(wishlistItemRepository.findByTenantUserIdOrderByCreatedAtDesc(tenantUserId)).thenReturn(List.of(wishlistItem1, wishlistItem2));
+        WishlistItemDto wishlistItemDto1 = new WishlistItemDto(wishlistItem1.getWishlistItemId(), wishlistItem1.getTenantUserId(),null, wishlistItem1.getCreatedAt());
+        WishlistItemDto wishlistItemDto2 = new WishlistItemDto(wishlistItem2.getWishlistItemId(), wishlistItem2.getTenantUserId(),null, wishlistItem2.getCreatedAt());
 
-        List<WishlistItem> wishlist = notificationService.getWishlist(tenantUserId);
+        when(wishlistItemRepository.findByTenantUserIdOrderByCreatedAtDesc(tenantUserId)).thenReturn(Optional.of(List.of(wishlistItem1, wishlistItem2)));
+
+        List<WishlistItemDto> wishlist = notificationService.getWishlist(tenantUserId);
 
         assertNotNull(wishlist);
         assertEquals(2, wishlist.size());
@@ -176,9 +181,9 @@ class NotificationServiceTest {
     @Test
     @DisplayName("Get Wishlist - Success (Empty)")
     void getWishlist_Success_Empty() {
-        when(wishlistItemRepository.findByTenantUserIdOrderByCreatedAtDesc(tenantUserId)).thenReturn(Collections.emptyList());
+        when(wishlistItemRepository.findByTenantUserIdOrderByCreatedAtDesc(tenantUserId)).thenReturn(Optional.empty());
 
-        List<WishlistItem> wishlist = notificationService.getWishlist(tenantUserId);
+        List<WishlistItemDto> wishlist = notificationService.getWishlist(tenantUserId);
 
         assertNotNull(wishlist);
         assertTrue(wishlist.isEmpty());
@@ -232,14 +237,14 @@ class NotificationServiceTest {
     @Test
     @DisplayName("Get Notifications - Success (Unread Only)")
     void getNotifications_Success_UnreadOnly() {
-         Notification notification2 = new Notification(); // Another notification for the user
+        Notification notification2 = new Notification(); // Another notification for the user
         notification2.setNotificationId(UUID.randomUUID().toString());
         notification2.setRecipientUserId(tenantUserId);
         notification2.setRead(true); // One read, one unread
 
-        when(notificationRepository.findByRecipientUserIdAndIsReadOrderByCreatedAtDesc(tenantUserId, false)).thenReturn(List.of(notification1));
+        when(notificationRepository.findByRecipientUserIdAndIsReadOrderByCreatedAtDesc(tenantUserId, true)).thenReturn(List.of(notification1));
 
-        List<Notification> notifications = notificationService.getNotifications(tenantUserId, false); // isRead = false
+        List<NotificationDto> notifications = notificationService.getNotifications(tenantUserId, false); // isRead = false
 
         assertEquals(1, notifications.size());
         assertFalse(notifications.get(0).isRead());
@@ -250,10 +255,10 @@ class NotificationServiceTest {
     @Test
     @DisplayName("Mark Notification As Read - Success")
     void markNotificationAsRead_Success() {
-        when(notificationRepository.findByNotificationIdAndRecipientUserId(notificationId1, tenantUserId)).thenReturn(Optional.of(notification1));
+        when(notificationRepository.findByNotificationIdAndRecipientUserId(notificationId1, tenantUserId)).thenReturn(List.of(notification1));
         when(notificationRepository.save(any(Notification.class))).thenReturn(notification1); // Return the saved entity
 
-        Notification updatedNotification = notificationService.markNotificationAsRead(tenantUserId, notificationId1);
+        NotificationDto updatedNotification = notificationService.markNotificationAsRead(tenantUserId, notificationId1);
 
         assertTrue(updatedNotification.isRead());
         verify(notificationRepository).findByNotificationIdAndRecipientUserId(notificationId1, tenantUserId);
@@ -268,9 +273,9 @@ class NotificationServiceTest {
     @DisplayName("Mark Notification As Read - Already Read")
     void markNotificationAsRead_AlreadyRead() {
         notification1.setRead(true); // Mark as read initially
-        when(notificationRepository.findByNotificationIdAndRecipientUserId(notificationId1, tenantUserId)).thenReturn(Optional.of(notification1));
+        when(notificationRepository.findByNotificationIdAndRecipientUserId(notificationId1, tenantUserId)).thenReturn(List.of(notification1));
 
-        Notification result = notificationService.markNotificationAsRead(tenantUserId, notificationId1);
+        NotificationDto result = notificationService.markNotificationAsRead(tenantUserId, notificationId1);
 
         assertTrue(result.isRead()); // Should still be read
         verify(notificationRepository).findByNotificationIdAndRecipientUserId(notificationId1, tenantUserId);
@@ -282,7 +287,7 @@ class NotificationServiceTest {
     @Test
     @DisplayName("Mark Notification As Read - Not Found")
     void markNotificationAsRead_NotFound() {
-        when(notificationRepository.findByNotificationIdAndRecipientUserId(notificationId1, tenantUserId)).thenReturn(Optional.empty());
+        when(notificationRepository.findByNotificationIdAndRecipientUserId(notificationId1, tenantUserId)).thenReturn(List.of());
 
         assertThrows(ResourceNotFoundException.class, () -> {
             notificationService.markNotificationAsRead(tenantUserId, notificationId1);
@@ -342,7 +347,7 @@ class NotificationServiceTest {
         String tenantUserId2 = UUID.randomUUID().toString();
         List<String> userIds = List.of(tenantUserId, tenantUserId2);
 
-        when(wishlistItemRepository.findTenantUserIdsByPropertyId(propertyId1)).thenReturn(userIds);
+        when(wishlistItemRepository.findTenantUserIdsByPropertyId(propertyId1)).thenReturn(Optional.of(userIds));
         when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenReturn(Optional.of(propertyInfo1));
         when(notificationRepository.saveAll(anyList())).thenReturn(Collections.emptyList()); // Simulate saveAll
 
@@ -389,7 +394,7 @@ class NotificationServiceTest {
     @DisplayName("Notify Wishlist Users On Vacancy - No Users Wishlisted")
     void notifyWishlistUsersOnVacancy_NoUsersWishlisted() {
         when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenReturn(Optional.of(propertyInfo1));
-        when(wishlistItemRepository.findTenantUserIdsByPropertyId(propertyId1)).thenReturn(Collections.emptyList()); // No users found
+        when(wishlistItemRepository.findTenantUserIdsByPropertyId(propertyId1)).thenReturn(Optional.empty()); // No users found
 
         notificationService.notifyWishlistUsersOnVacancy(propertyId1);
 
