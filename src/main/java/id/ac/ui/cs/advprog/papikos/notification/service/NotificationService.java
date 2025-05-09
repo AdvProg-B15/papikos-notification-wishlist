@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,12 +34,12 @@ public class NotificationService {
 
 
     @Transactional
-    public WishlistItemDto addToWishlist(Long tenantUserId, AddToWishlistRequest request) {
+    public WishlistItemDto addToWishlist(String tenantUserId, AddToWishlistRequest request) {
         log.info("Tenant {} attempting to add property {} to wishlist", tenantUserId, request.getPropertyId());
 
         if (!propertyServiceClient.checkPropertyExists(request.getPropertyId())) {
              log.warn("Wishlist add failed: Property {} not found", request.getPropertyId());
-            throw new ResourceNotFoundException("Property not found with ID: " + request.getPropertyId());
+            throw new ResourceNotFoundException("Property not found with ID: " + request.getPropertyId(), new NoSuchElementException());
         }
 
         if (wishlistItemRepository.existsByTenantUserIdAndPropertyId(tenantUserId, request.getPropertyId())) {
@@ -64,7 +65,7 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public List<WishlistItemDto> getWishlist(Long tenantUserId) {
+    public List<WishlistItemDto> getWishlist(String tenantUserId) {
         log.debug("Fetching wishlist for tenant {}", tenantUserId);
         List<WishlistItem> items = wishlistItemRepository.findByTenantUserId(tenantUserId);
 
@@ -83,18 +84,18 @@ public class NotificationService {
     }
 
     @Transactional
-    public void removeFromWishlist(Long tenantUserId, Long propertyId) {
+    public void removeFromWishlist(String tenantUserId, String propertyId) {
         log.info("Tenant {} attempting to remove property {} from wishlist", tenantUserId, propertyId);
-        long deleteCount = wishlistItemRepository.deleteByTenantUserIdAndPropertyId(tenantUserId, propertyId);
-        if (deleteCount == 0) {
+        String deleteCount = wishlistItemRepository.deleteByTenantUserIdAndPropertyId(tenantUserId, propertyId);
+        if (deleteCount.isBlank()) {
              log.warn("Wishlist remove failed: Tenant {} did not have property {} in wishlist", tenantUserId, propertyId);
-            throw new ResourceNotFoundException("Property " + propertyId + " not found in wishlist for this user.");
+            throw new ResourceNotFoundException("Property " + propertyId + " not found in wishlist for this user.", new ConflictException("Property Not Found"));
         }
          log.info("Property {} removed from wishlist for tenant {}", propertyId, tenantUserId);
     }
 
     @Transactional(readOnly = true)
-    public List<NotificationDto> getNotifications(Long userId, boolean unreadOnly) {
+    public List<NotificationDto> getNotifications(String userId, boolean unreadOnly) {
         log.debug("Fetching notifications for user {}, unreadOnly={}", userId, unreadOnly);
         List<Notification> notifications;
         if (unreadOnly) {
@@ -106,12 +107,12 @@ public class NotificationService {
     }
 
     @Transactional
-    public NotificationDto markNotificationAsRead(Long userId, Long notificationId) {
+    public NotificationDto markNotificationAsRead(String userId, String notificationId) {
          log.info("User {} attempting to mark notification {} as read", userId, notificationId);
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> {
                      log.warn("Mark as read failed: Notification {} not found", notificationId);
-                     return new ResourceNotFoundException("Notification not found with ID: " + notificationId);
+                     return new ResourceNotFoundException("Notification not found with ID: " + notificationId, new NoSuchElementException());
                 });
 
         if (notification.getRecipientUserId() == null || !notification.getRecipientUserId().equals(userId)) {
@@ -163,7 +164,7 @@ public class NotificationService {
     }
 
     @Transactional 
-    public void notifyWishlistUsersOnVacancy(Long propertyId) {
+    public void notifyWishlistUsersOnVacancy(String propertyId) {
          log.info("Processing vacancy notification for property {}", propertyId);
 
          String propertyName = propertyServiceClient.getPropertySummary(propertyId)

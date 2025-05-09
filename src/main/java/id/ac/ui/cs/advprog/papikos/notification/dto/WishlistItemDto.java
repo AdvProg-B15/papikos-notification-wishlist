@@ -15,9 +15,9 @@ import java.time.Instant;
 @AllArgsConstructor
 public class WishlistItemDto {
 
-    private Long wishlistItemId;
+    private String wishlistItemId;
 
-    private Long tenantUserId; // ID of the tenant who owns this wishlist item
+    private String tenantUserId; // ID of the tenant who owns this wishlist item
 
     private PropertySummaryDto property; // Embedded summary of the wishlisted property
 

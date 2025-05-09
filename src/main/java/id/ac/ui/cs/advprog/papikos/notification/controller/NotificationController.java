@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.papikos.notification.controller;
 import id.ac.ui.cs.advprog.papikos.notification.dto.*;
 import id.ac.ui.cs.advprog.papikos.notification.service.NotificationService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails; // Or your custom Principal class
 import org.springframework.web.bind.annotation.*;
-
+import lombok.Data;
 import java.util.List;
 
 @RestController
@@ -25,7 +26,7 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     // Helper method to extract user ID (replace with your actual principal details)
-    private Long getCurrentUserId(Object principal) {
+    private String getCurrentUserId(Object principal) {
         if (principal instanceof UserDetails) {
              // If using UserDetails, you might need to parse the username if it's the ID,
              // or use a custom UserDetails implementation that holds the ID.
@@ -36,10 +37,11 @@ public class NotificationController {
              // return ((CustomUserDetails) principal).getId();
              // --- Placeholder --- return a default/test ID if not implemented
              log.warn("Security principal type not fully handled: {}. Returning placeholder ID 1L.", principal.getClass().getName());
-             return 1L; // !!! REPLACE WITH ACTUAL LOGIC !!!
+             // TODO: PARSE THE USER DETAIL -> USERID
+             return ""; // !!! REPLACE WITH ACTUAL LOGIC !!!
         } else if (principal instanceof String) {
             try { // If the principal is just the user ID string
-                return Long.parseLong((String) principal);
+                return String.valueOf(principal);
             } catch (NumberFormatException e) {
                  log.error("Could not parse user ID from Principal String: {}", principal);
                  throw new IllegalStateException("Invalid Principal format");
@@ -58,7 +60,7 @@ public class NotificationController {
     public ResponseEntity<WishlistItemDto> addToWishlist(
             @Valid @RequestBody AddToWishlistRequest request,
             @AuthenticationPrincipal Object principal) { // Inject principal
-        Long tenantUserId = getCurrentUserId(principal);
+        String tenantUserId = getCurrentUserId(principal);
         log.info("API Request: Tenant {} adding property {} to wishlist", tenantUserId, request.getPropertyId());
         WishlistItemDto createdItem = notificationService.addToWishlist(tenantUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdItem);
@@ -68,7 +70,7 @@ public class NotificationController {
     @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<List<WishlistItemDto>> getWishlist(
              @AuthenticationPrincipal Object principal) {
-        Long tenantUserId = getCurrentUserId(principal);
+        String tenantUserId = getCurrentUserId(principal);
          log.info("API Request: Tenant {} retrieving wishlist", tenantUserId);
         List<WishlistItemDto> wishlist = notificationService.getWishlist(tenantUserId);
         return ResponseEntity.ok(wishlist);
@@ -77,9 +79,9 @@ public class NotificationController {
     @DeleteMapping("/wishlist/{propertyId}")
     @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<Void> removeFromWishlist(
-            @PathVariable Long propertyId,
+            @PathVariable String propertyId,
              @AuthenticationPrincipal Object principal) {
-        Long tenantUserId = getCurrentUserId(principal);
+        String tenantUserId = getCurrentUserId(principal);
         log.info("API Request: Tenant {} removing property {} from wishlist", tenantUserId, propertyId);
         notificationService.removeFromWishlist(tenantUserId, propertyId);
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -92,7 +94,7 @@ public class NotificationController {
     public ResponseEntity<List<NotificationDto>> getNotifications(
             @RequestParam(required = false, defaultValue = "false") boolean unreadOnly,
              @AuthenticationPrincipal Object principal) {
-        Long userId = getCurrentUserId(principal);
+        String userId = getCurrentUserId(principal);
          log.info("API Request: User {} retrieving notifications (unreadOnly={})", userId, unreadOnly);
         List<NotificationDto> notifications = notificationService.getNotifications(userId, unreadOnly);
         return ResponseEntity.ok(notifications);
@@ -101,9 +103,9 @@ public class NotificationController {
     @PatchMapping("/notifications/{notificationId}/read")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NotificationDto> markNotificationAsRead(
-            @PathVariable Long notificationId,
+            @PathVariable String notificationId,
              @AuthenticationPrincipal Object principal) {
-        Long userId = getCurrentUserId(principal);
+        String userId = getCurrentUserId(principal);
         log.info("API Request: User {} marking notification {} as read", userId, notificationId);
         NotificationDto updatedNotification = notificationService.markNotificationAsRead(userId, notificationId);
         return ResponseEntity.ok(updatedNotification);
@@ -148,6 +150,6 @@ public class NotificationController {
      @Data
      static class VacancyTriggerRequest {
          @NotNull
-         private Long propertyId;
+         private String propertyId;
      }
 }

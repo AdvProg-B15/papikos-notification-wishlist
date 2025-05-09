@@ -2,6 +2,13 @@ package id.ac.ui.cs.advprog.papikos.notification.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.ac.ui.cs.advprog.papikos.notification.dto.*;
+import id.ac.ui.cs.advprog.papikos.notification.dto.BroadcastNotificationRequest;
+import id.ac.ui.cs.advprog.papikos.notification.dto.InternalNotificationRequest;
+import id.ac.ui.cs.advprog.papikos.notification.dto.NotificationDto;
+import id.ac.ui.cs.advprog.papikos.notification.dto.PropertySummaryDto;
+import id.ac.ui.cs.advprog.papikos.notification.dto.AddToWishlistRequest;
+
+
 import id.ac.ui.cs.advprog.papikos.notification.exception.ConflictException;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ResourceNotFoundException;
 import id.ac.ui.cs.advprog.papikos.notification.model.Notification;
@@ -12,15 +19,17 @@ import id.ac.ui.cs.advprog.papikos.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers.*;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.hasSize;
 import org.springframework.http.MediaType;
 // Import security test annotations if needed for role checks
 // import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -28,12 +37,12 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.time.ZoneId;
 @WebMvcTest(NotificationController.class)
 // Use @AutoConfigureMockMvc(addFilters = false) if you want to disable security filters for tests
 // Or use @WithMockUser for specific role testing
@@ -42,7 +51,7 @@ class NotificationControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @Mock
     private NotificationService notificationService;
 
     // Assuming a simple mapper or direct DTO creation in controller/service for tests
@@ -73,11 +82,11 @@ class NotificationControllerTest {
         addToWishlistRequest = new AddToWishlistRequest(propertyId1);
         broadcastRequest = new BroadcastNotificationRequest("Important Update", "Service details changed.");
 
-        wishlistItem = new WishlistItem(wishlistItemId1, tenantUserId, propertyId1, LocalDateTime.now());
-        notification = new Notification(notificationId1, tenantUserId, NotificationType.WISHLIST_VACANCY, "Vacancy", "Room available", false, propertyId1, null, LocalDateTime.now());
+        wishlistItem = new WishlistItem(wishlistItemId1, tenantUserId, propertyId1,  LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
+        notification = new Notification(notificationId1, tenantUserId, NotificationType.WISHLIST_VACANCY, "Vacancy", "Room available", false, propertyId1, null,  LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
 
         // Assume DTOs are created correctly for responses
-        wishlistItemDto = new WishlistItemDto(wishlistItemId1, propertyId1, "Sample Property Name", wishlistItem.getCreatedAt()); // Add propertyName if needed
+        wishlistItemDto = new WishlistItemDto(wishlistItemId1, propertyId1, new PropertySummaryDto(), wishlistItem.getCreatedAt()); // Add propertyName if needed
         notificationDto = new NotificationDto(notificationId1, notification.getNotificationType(), notification.getTitle(), notification.getMessage(), notification.isRead(), notification.getRelatedPropertyId(), notification.getRelatedRentalId(), notification.getCreatedAt());
     }
 
@@ -96,7 +105,7 @@ class NotificationControllerTest {
     // @WithMockUser(username = "user-tenant-123", roles = {"TENANT"}) // Example security
     void addWishlistItem_Success() throws Exception {
         when(notificationService.addToWishlist(eq(getCurrentUserId()), any(AddToWishlistRequest.class)))
-                .thenReturn(wishlistItem);
+                .thenReturn(wishlistItemDto);
         // Mock DTO mapping if separate mapper exists
         // when(notificationMapper.toWishlistItemDto(wishlistItem)).thenReturn(wishlistItemDto);
 
@@ -118,7 +127,7 @@ class NotificationControllerTest {
     // @WithMockUser(roles = {"TENANT"})
     void addWishlistItem_PropertyNotFound() throws Exception {
         when(notificationService.addToWishlist(eq(getCurrentUserId()), any(AddToWishlistRequest.class)))
-                .thenThrow(new ResourceNotFoundException("Property not found: " + propertyId1));
+                .thenThrow(new ResourceNotFoundException("Property not found: " + propertyId1, null));
 
         mockMvc.perform(post("/wishlist")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -148,11 +157,12 @@ class NotificationControllerTest {
     // @WithMockUser(roles = {"TENANT"})
     void getWishlist_Success() throws Exception {
         List<WishlistItem> items = List.of(wishlistItem);
-        List<WishlistItemDto> dtos = items.stream().map(item -> new WishlistItemDto(item.getWishlistItemId(), item.getPropertyId(), "Property " + item.getPropertyId(), item.getCreatedAt())).collect(Collectors.toList());
+        List<WishlistItemDto> dtos = items.stream().map(item -> new WishlistItemDto(item.getWishlistItemId(), item.getPropertyId(), new PropertySummaryDto(), item.getCreatedAt())).collect(Collectors.toList());
 
-        when(notificationService.getWishlist(getCurrentUserId())).thenReturn(items);
+
+        when(notificationService.getWishlist(getCurrentUserId())).thenReturn(dtos);
          // Assume controller or service maps to DTOs
-         // when(notificationMapper.toWishlistItemDtoList(items)).thenReturn(dtos);
+//          when(notificationService.getWishlist(items)).thenReturn(dtos);
 
         mockMvc.perform(get("/wishlist"))
                 .andExpect(status().isOk())
@@ -193,7 +203,7 @@ class NotificationControllerTest {
     @DisplayName("DELETE /wishlist/{propertyId} - Not Found (404 Not Found)")
     // @WithMockUser(roles = {"TENANT"})
     void removeWishlistItem_NotFound() throws Exception {
-        doThrow(new ResourceNotFoundException("Wishlist item not found"))
+        doThrow(new ResourceNotFoundException("Wishlist item not found", null))
                 .when(notificationService).removeFromWishlist(getCurrentUserId(), propertyId1);
 
         mockMvc.perform(delete("/wishlist/{propertyId}", propertyId1))
@@ -211,7 +221,7 @@ class NotificationControllerTest {
         List<Notification> notifications = List.of(notification);
          List<NotificationDto> dtos = notifications.stream().map(n -> new NotificationDto(n.getNotificationId(), n.getNotificationType(), n.getTitle(), n.getMessage(), n.isRead(), n.getRelatedPropertyId(), n.getRelatedRentalId(), n.getCreatedAt())).collect(Collectors.toList());
 
-        when(notificationService.getNotifications(getCurrentUserId(), null)).thenReturn(notifications);
+        when(notificationService.getNotifications(getCurrentUserId(), false)).thenReturn(dtos);
         // when(notificationMapper.toNotificationDtoList(notifications)).thenReturn(dtos);
 
         mockMvc.perform(get("/notifications")) // No query param -> get all
@@ -220,7 +230,7 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].notificationId", is(notification.getNotificationId())));
 
-        verify(notificationService).getNotifications(getCurrentUserId(), null);
+        verify(notificationService).getNotifications(getCurrentUserId(), false);
     }
 
     @Test
@@ -231,7 +241,7 @@ class NotificationControllerTest {
         List<Notification> notifications = List.of(notification);
          List<NotificationDto> dtos = notifications.stream().map(n -> new NotificationDto(n.getNotificationId(), n.getNotificationType(), n.getTitle(), n.getMessage(), n.isRead(), n.getRelatedPropertyId(), n.getRelatedRentalId(), n.getCreatedAt())).collect(Collectors.toList());
 
-        when(notificationService.getNotifications(getCurrentUserId(), false)).thenReturn(notifications);
+        when(notificationService.getNotifications(getCurrentUserId(), false)).thenReturn(dtos);
         // when(notificationMapper.toNotificationDtoList(notifications)).thenReturn(dtos);
 
 
@@ -253,7 +263,7 @@ class NotificationControllerTest {
         List<NotificationDto> dtos = notifications.stream().map(n -> new NotificationDto(n.getNotificationId(), n.getNotificationType(), n.getTitle(), n.getMessage(), n.isRead(), n.getRelatedPropertyId(), n.getRelatedRentalId(), n.getCreatedAt())).collect(Collectors.toList());
 
 
-        when(notificationService.getNotifications(getCurrentUserId(), true)).thenReturn(notifications);
+        when(notificationService.getNotifications(getCurrentUserId(), true)).thenReturn(dtos);
         // when(notificationMapper.toNotificationDtoList(notifications)).thenReturn(dtos);
 
         mockMvc.perform(get("/notifications").param("isRead", "true"))
@@ -273,7 +283,7 @@ class NotificationControllerTest {
         notification.setRead(true); // Simulate the state after marking as read
         NotificationDto updatedDto = new NotificationDto(notificationId1, notification.getNotificationType(), notification.getTitle(), notification.getMessage(), true, notification.getRelatedPropertyId(), notification.getRelatedRentalId(), notification.getCreatedAt());
 
-        when(notificationService.markNotificationAsRead(getCurrentUserId(), notificationId1)).thenReturn(notification);
+        when(notificationService.markNotificationAsRead(getCurrentUserId(), notificationId1)).thenReturn(updatedDto);
         // when(notificationMapper.toNotificationDto(notification)).thenReturn(updatedDto);
 
         mockMvc.perform(patch("/notifications/{id}/read", notificationId1))
@@ -290,7 +300,7 @@ class NotificationControllerTest {
     // @WithMockUser(roles = {"TENANT", "OWNER", "ADMIN"})
     void markNotificationAsRead_NotFound() throws Exception {
         when(notificationService.markNotificationAsRead(getCurrentUserId(), notificationId1))
-                .thenThrow(new ResourceNotFoundException("Notification not found"));
+                .thenThrow(new ResourceNotFoundException("Notification not found", null));
 
         mockMvc.perform(patch("/notifications/{id}/read", notificationId1))
                 .andExpect(status().isNotFound());
@@ -307,7 +317,7 @@ class NotificationControllerTest {
         // If the service threw a specific ForbiddenException, we'd catch that.
         // Here, we assume it returns NotFound if the ID doesn't match the user.
          when(notificationService.markNotificationAsRead(getCurrentUserId(), notificationId1))
-                .thenThrow(new ResourceNotFoundException("Notification not found for this user")); // Or potentially a ForbiddenException
+                .thenThrow(new ResourceNotFoundException("Notification not found for this user", null)); // Or potentially a ForbiddenException
 
         mockMvc.perform(patch("/notifications/{id}/read", notificationId1))
                 .andExpect(status().isNotFound()); // Or isForbidden() if service throws that

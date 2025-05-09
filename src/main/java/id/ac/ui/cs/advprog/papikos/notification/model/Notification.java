@@ -19,10 +19,10 @@ public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long notificationId;
+    private String notificationId;
 
     @Column // Nullable for broadcast
-    private Long recipientUserId; // Logical FK to User in Auth Service
+    private String recipientUserId; // Logical FK to User in Auth Service
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -38,10 +38,10 @@ public class Notification {
     private boolean isRead = false;
 
     @Column // Nullable
-    private Long relatedPropertyId; // Logical FK to Property Service
+    private String relatedPropertyId; // Logical FK to Property Service
 
     @Column // Nullable
-    private Long relatedRentalId; // Logical FK to Rental Service
+    private String relatedRentalId; // Logical FK to Rental Service
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

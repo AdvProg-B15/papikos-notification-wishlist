@@ -21,20 +21,20 @@ public class WishlistItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long wishlistItemId;
+    private String wishlistItemId;
 
     @Column(nullable = false)
-    private Long tenantUserId; // Logical FK to User in Auth Service
+    private String tenantUserId; // Logical FK to User in Auth Service
 
     @Column(nullable = false)
-    private Long propertyId; // Logical FK to Property in Property Service
+    private String propertyId; // Logical FK to Property in Property Service
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
     // Constructor for service layer usage
-    public WishlistItem(Long tenantUserId, Long propertyId) {
+    public WishlistItem(String tenantUserId, String propertyId) {
         this.tenantUserId = tenantUserId;
         this.propertyId = propertyId;
     }

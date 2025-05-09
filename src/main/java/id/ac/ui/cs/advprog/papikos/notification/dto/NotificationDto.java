@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.papikos.notification.dto;
 import id.ac.ui.cs.advprog.papikos.notification.model.Notification; // Import the entity
 import id.ac.ui.cs.advprog.papikos.notification.model.NotificationType; // Import the enum
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,10 +16,10 @@ import java.time.Instant;
 @AllArgsConstructor
 public class NotificationDto {
 
-    private Long notificationId;
+    private String notificationId;
 
     // Nullable for BROADCAST notifications seen by all users.
-    private Long recipientUserId;
+    private String recipientUserId;
 
     private NotificationType notificationType; // Enum: BROADCAST, WISHLIST_VACANCY, etc.
 
@@ -29,10 +30,14 @@ public class NotificationDto {
     private boolean isRead;
 
     // Optional IDs linking the notification to related entities for context/navigation.
-    private Long relatedPropertyId;
-    private Long relatedRentalId;
+    private String relatedPropertyId;
+    private String relatedRentalId;
 
     private Instant createdAt;
+
+    public static NotificationDto(String notificationId, NotificationType notificationType, String title, String message, boolean isRead, String relatedPropertyId, String relatedRentalId, Instant createdAt) {
+
+    }
 
     /**
      * Static factory method to convert a Notification entity to its DTO representation.

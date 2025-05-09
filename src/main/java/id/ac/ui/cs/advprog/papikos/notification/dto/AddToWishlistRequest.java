@@ -11,5 +11,5 @@ import lombok.NoArgsConstructor;
 public class AddToWishlistRequest {
 
     @NotNull(message = "Property ID cannot be null")
-    private Long propertyId;
+    private String propertyId;
 }

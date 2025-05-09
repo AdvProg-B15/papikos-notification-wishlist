@@ -10,12 +10,12 @@ import java.util.List;
 @Repository
 public interface WishlistItemRepository extends JpaRepository<WishlistItem, Long> {
 
-    List<WishlistItem> findByTenantUserId(Long tenantUserId);
+    List<WishlistItem> findByTenantUserId(String tenantUserId);
 
-    boolean existsByTenantUserIdAndPropertyId(Long tenantUserId, Long propertyId);
+    boolean existsByTenantUserIdAndPropertyId(String tenantUserId, String propertyId);
 
     @Transactional 
-    long deleteByTenantUserIdAndPropertyId(Long tenantUserId, Long propertyId);
+    String deleteByTenantUserIdAndPropertyId(String tenantUserId, String propertyId);
 
-    List<WishlistItem> findByPropertyId(Long propertyId);
+    List<WishlistItem> findByPropertyId(String propertyId);
 }

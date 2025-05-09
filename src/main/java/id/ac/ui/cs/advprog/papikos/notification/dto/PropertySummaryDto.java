@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PropertySummaryDto {
 
-    private Long propertyId;
+    private String propertyId;
 
     private String name;
 
