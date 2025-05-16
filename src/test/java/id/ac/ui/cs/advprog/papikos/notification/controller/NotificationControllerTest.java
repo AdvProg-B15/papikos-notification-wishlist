@@ -8,7 +8,7 @@ import id.ac.ui.cs.advprog.papikos.notification.dto.NotificationDto;
 import id.ac.ui.cs.advprog.papikos.notification.dto.PropertySummaryDto;
 import id.ac.ui.cs.advprog.papikos.notification.dto.AddToWishlistRequest;
 
-
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ConflictException;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ResourceNotFoundException;
 import id.ac.ui.cs.advprog.papikos.notification.model.Notification;
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers.*;
-import org.mockito.Mock;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import static org.hamcrest.Matchers.is;
@@ -51,7 +51,7 @@ class NotificationControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Mock
+    @MockBean
     private NotificationService notificationService;
 
     // Assuming a simple mapper or direct DTO creation in controller/service for tests
@@ -60,10 +60,10 @@ class NotificationControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private String tenantUserId;
-    private String propertyId1;
-    private String wishlistItemId1;
-    private String notificationId1;
+    private UUID tenantUserId;
+    private UUID propertyId1;
+    private UUID wishlistItemId1;
+    private UUID notificationId1;
     private AddToWishlistRequest addToWishlistRequest;
     private BroadcastNotificationRequest broadcastRequest;
     private WishlistItem wishlistItem;
@@ -74,10 +74,10 @@ class NotificationControllerTest {
 
     @BeforeEach
     void setUp() {
-        tenantUserId = "user-tenant-123"; // Use a predictable ID for controller tests if needed
-        propertyId1 = UUID.randomUUID().toString();
-        wishlistItemId1 = UUID.randomUUID().toString();
-        notificationId1 = UUID.randomUUID().toString();
+        tenantUserId = UUID.randomUUID(); // Use a predictable ID for controller tests if needed
+        propertyId1 = UUID.randomUUID();
+        wishlistItemId1 = UUID.randomUUID();
+        notificationId1 = UUID.randomUUID();
 
         addToWishlistRequest = new AddToWishlistRequest(propertyId1);
         broadcastRequest = new BroadcastNotificationRequest("Important Update", "Service details changed.");
@@ -91,7 +91,7 @@ class NotificationControllerTest {
     }
 
     // Utility to simulate getting current user ID (replace with actual mechanism if needed)
-    private String getCurrentUserId() {
+    private UUID getCurrentUserId() {
         // In real tests with Spring Security, this might come from @AuthenticationPrincipal
         // or SecurityContextHolder. For MockMvc, we often pass it or assume it's handled.
         // Here, we pass it explicitly where needed or assume filter sets it.
@@ -173,7 +173,7 @@ class NotificationControllerTest {
         verify(notificationService).getWishlist(getCurrentUserId());
     }
 
-     @Test
+    @Test
     @DisplayName("GET /wishlist - Success Empty List (200 OK)")
     // @WithMockUser(roles = {"TENANT"})
     void getWishlist_SuccessEmpty() throws Exception {
@@ -207,6 +207,7 @@ class NotificationControllerTest {
                 .when(notificationService).removeFromWishlist(getCurrentUserId(), propertyId1);
 
         mockMvc.perform(delete("/wishlist/{propertyId}", propertyId1))
+                .andDo(print())
                 .andExpect(status().isNotFound());
 
         verify(notificationService).removeFromWishlist(getCurrentUserId(), propertyId1);
@@ -225,6 +226,7 @@ class NotificationControllerTest {
         // when(notificationMapper.toNotificationDtoList(notifications)).thenReturn(dtos);
 
         mockMvc.perform(get("/notifications")) // No query param -> get all
+                .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -246,6 +248,7 @@ class NotificationControllerTest {
 
 
         mockMvc.perform(get("/notifications").param("isRead", "false"))
+                .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -267,6 +270,7 @@ class NotificationControllerTest {
         // when(notificationMapper.toNotificationDtoList(notifications)).thenReturn(dtos);
 
         mockMvc.perform(get("/notifications").param("isRead", "true"))
+                .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -287,6 +291,7 @@ class NotificationControllerTest {
         // when(notificationMapper.toNotificationDto(notification)).thenReturn(updatedDto);
 
         mockMvc.perform(patch("/notifications/{id}/read", notificationId1))
+                .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.notificationId", is(notificationId1)))
@@ -303,6 +308,7 @@ class NotificationControllerTest {
                 .thenThrow(new ResourceNotFoundException("Notification not found", null));
 
         mockMvc.perform(patch("/notifications/{id}/read", notificationId1))
+                .andDo(print())
                 .andExpect(status().isNotFound());
 
         verify(notificationService).markNotificationAsRead(getCurrentUserId(), notificationId1);
@@ -320,6 +326,7 @@ class NotificationControllerTest {
                 .thenThrow(new ResourceNotFoundException("Notification not found for this user", null)); // Or potentially a ForbiddenException
 
         mockMvc.perform(patch("/notifications/{id}/read", notificationId1))
+                .andDo(print())
                 .andExpect(status().isNotFound()); // Or isForbidden() if service throws that
 
         verify(notificationService).markNotificationAsRead(getCurrentUserId(), notificationId1);
@@ -336,6 +343,7 @@ class NotificationControllerTest {
                         // Add Auth header or @WithMockUser with ADMIN role
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(broadcastRequest)))
+                .andDo(print())
                 .andExpect(status().isAccepted()); // 202 Accepted for async/fire-and-forget
 
         verify(notificationService).sendBroadcastNotification(any(BroadcastNotificationRequest.class));

@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
 import java.time.Instant;
 
 /**
@@ -16,10 +17,10 @@ import java.time.Instant;
 @AllArgsConstructor
 public class NotificationDto {
 
-    private String notificationId;
+    private UUID notificationId;
 
     // Nullable for BROADCAST notifications seen by all users.
-    private String recipientUserId;
+    private UUID recipientUserId;
 
     private NotificationType notificationType; // Enum: BROADCAST, WISHLIST_VACANCY, etc.
 
@@ -30,12 +31,12 @@ public class NotificationDto {
     private boolean isRead;
 
     // Optional IDs linking the notification to related entities for context/navigation.
-    private String relatedPropertyId;
-    private String relatedRentalId;
+    private UUID relatedPropertyId;
+    private UUID relatedRentalId;
 
     private Instant createdAt;
 
-    public NotificationDto(String notificationId, NotificationType notificationType, String title, String message, boolean isRead, String relatedPropertyId, String relatedRentalId, Instant createdAt) {
+    public NotificationDto(UUID notificationId, NotificationType notificationType, String title, String message, boolean isRead, UUID relatedPropertyId, UUID relatedRentalId, Instant createdAt) {
 
     }
 

@@ -3,17 +3,17 @@ package id.ac.ui.cs.advprog.papikos.notification.repository;
 import id.ac.ui.cs.advprog.papikos.notification.model.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-
+import java.util.UUID;
 import java.util.List;
 
 @Repository
-public interface NotificationRepository extends JpaRepository<Notification, String> {
+public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-    List<Notification> findByRecipientUserIdOrderByCreatedAtDesc(String recipientUserId);
+    List<Notification> findByRecipientUserIdOrderByCreatedAtDesc(UUID recipientUserId);
 
-    List<Notification> findByRecipientUserIdAndIsReadFalseOrderByCreatedAtDesc(String recipientUserId);
+    List<Notification> findByRecipientUserIdAndIsReadFalseOrderByCreatedAtDesc(UUID recipientUserId);
 
-    List<Notification> findByRecipientUserIdAndIsReadOrderByCreatedAtDesc(String recipientUserId, Boolean isRead);
+    List<Notification> findByRecipientUserIdAndIsReadOrderByCreatedAtDesc(UUID recipientUserId, Boolean isRead);
 
-    List<Notification> findByNotificationIdAndRecipientUserId(String notificationId, String recipientUserId);
+    List<Notification> findByNotificationIdAndRecipientUserId(UUID notificationId, UUID recipientUserId);
 }

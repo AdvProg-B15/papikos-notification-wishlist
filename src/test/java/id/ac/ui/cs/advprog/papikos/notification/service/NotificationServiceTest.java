@@ -59,22 +59,22 @@ class NotificationServiceTest {
     private ArgumentCaptor<List<Notification>> notificationListCaptor;
 
 
-    private String tenantUserId;
-    private String propertyId1;
-    private String propertyId2;
-    private String wishlistItemId1;
-    private String notificationId1;
+    private UUID tenantUserId;
+    private UUID propertyId1;
+    private UUID propertyId2;
+    private UUID wishlistItemId1;
+    private UUID notificationId1;
     private WishlistItem wishlistItem1;
     private Notification notification1;
     private PropertyBasicInfoDto propertyInfo1;
 
     @BeforeEach
     void setUp() {
-        tenantUserId = UUID.randomUUID().toString();
-        propertyId1 = UUID.randomUUID().toString();
-        propertyId2 = UUID.randomUUID().toString(); // Another property
-        wishlistItemId1 = UUID.randomUUID().toString();
-        notificationId1 = UUID.randomUUID().toString();
+        tenantUserId = UUID.randomUUID();
+        propertyId1 = UUID.randomUUID();
+        propertyId2 = UUID.randomUUID(); // Another property
+        wishlistItemId1 = UUID.randomUUID();
+        notificationId1 = UUID.randomUUID();
 
         propertyInfo1 = new PropertyBasicInfoDto(propertyId1, "Cozy Room");
 
@@ -108,7 +108,7 @@ class NotificationServiceTest {
         // Mock save operation
         when(wishlistItemRepository.save(any(WishlistItem.class))).thenAnswer(invocation -> {
             WishlistItem item = invocation.getArgument(0);
-            item.setWishlistItemId(UUID.randomUUID().toString()); // Simulate ID generation on save
+            item.setWishlistItemId(UUID.randomUUID()); // Simulate ID generation on save
             return item;
         });
 
@@ -138,7 +138,7 @@ class NotificationServiceTest {
         });
 
         verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
-        verify(wishlistItemRepository, never()).findByTenantUserIdAndPropertyId(anyString(), anyString());
+        verify(wishlistItemRepository, never()).findByTenantUserIdAndPropertyId(any(UUID.class), any(UUID.class));
         verify(wishlistItemRepository, never()).save(any(WishlistItem.class));
     }
 
@@ -162,7 +162,7 @@ class NotificationServiceTest {
     @DisplayName("Get Wishlist - Success (Multiple Items)")
     void getWishlist_Success_MultipleItems() {
         WishlistItem wishlistItem2 = new WishlistItem();
-        wishlistItem2.setWishlistItemId(UUID.randomUUID().toString());
+        wishlistItem2.setWishlistItemId(UUID.randomUUID());
         wishlistItem2.setTenantUserId(tenantUserId);
         wishlistItem2.setPropertyId(propertyId2);
 
@@ -221,24 +221,24 @@ class NotificationServiceTest {
     @DisplayName("Get Notifications - Success (All)")
     void getNotifications_Success_All() {
         Notification notification2 = new Notification(); // Another notification for the user
-        notification2.setNotificationId(UUID.randomUUID().toString());
+        notification2.setNotificationId(UUID.randomUUID());
         notification2.setRecipientUserId(tenantUserId);
         notification2.setRead(true); // One read, one unread
 
         when(notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(tenantUserId)).thenReturn(List.of(notification1, notification2));
 
-        List<Notification> notifications = notificationService.getNotifications(tenantUserId, null); // null status means all
+        List<NotificationDto> notifications = notificationService.getNotifications(tenantUserId, false); // null status means all
 
         assertEquals(2, notifications.size());
         verify(notificationRepository).findByRecipientUserIdOrderByCreatedAtDesc(tenantUserId);
-        verify(notificationRepository, never()).findByRecipientUserIdAndIsReadOrderByCreatedAtDesc(anyString(), anyBoolean());
+        verify(notificationRepository, never()).findByRecipientUserIdAndIsReadOrderByCreatedAtDesc(any(UUID.class), anyBoolean());
     }
 
     @Test
     @DisplayName("Get Notifications - Success (Unread Only)")
     void getNotifications_Success_UnreadOnly() {
         Notification notification2 = new Notification(); // Another notification for the user
-        notification2.setNotificationId(UUID.randomUUID().toString());
+        notification2.setNotificationId(UUID.randomUUID());
         notification2.setRecipientUserId(tenantUserId);
         notification2.setRead(true); // One read, one unread
 
@@ -248,7 +248,7 @@ class NotificationServiceTest {
 
         assertEquals(1, notifications.size());
         assertFalse(notifications.get(0).isRead());
-        verify(notificationRepository, never()).findByRecipientUserIdOrderByCreatedAtDesc(anyString());
+        verify(notificationRepository, never()).findByRecipientUserIdOrderByCreatedAtDesc(any(UUID.class));
         verify(notificationRepository).findByRecipientUserIdAndIsReadOrderByCreatedAtDesc(tenantUserId, false);
     }
 
@@ -344,8 +344,8 @@ class NotificationServiceTest {
     @Test
     @DisplayName("Notify Wishlist Users On Vacancy - Success")
     void notifyWishlistUsersOnVacancy_Success() {
-        String tenantUserId2 = UUID.randomUUID().toString();
-        List<String> userIds = List.of(tenantUserId, tenantUserId2);
+        UUID tenantUserId2 = UUID.randomUUID();
+        List<UUID> userIds = List.of(tenantUserId, tenantUserId2);
 
         when(wishlistItemRepository.findTenantUserIdsByPropertyId(propertyId1)).thenReturn(Optional.of(userIds));
         when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenReturn(Optional.of(propertyInfo1));
@@ -386,7 +386,7 @@ class NotificationServiceTest {
         notificationService.notifyWishlistUsersOnVacancy(propertyId1);
 
         verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
-        verify(wishlistItemRepository, never()).findTenantUserIdsByPropertyId(anyString()); // Should not query wishlist if property missing
+        verify(wishlistItemRepository, never()).findTenantUserIdsByPropertyId(any(UUID.class)); // Should not query wishlist if property missing
         verify(notificationRepository, never()).saveAll(anyList()); // Should not save notifications
     }
 

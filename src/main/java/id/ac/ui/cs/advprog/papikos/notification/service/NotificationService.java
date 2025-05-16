@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
@@ -34,7 +34,7 @@ public class NotificationService {
 
 
     @Transactional
-    public WishlistItemDto addToWishlist(String tenantUserId, AddToWishlistRequest request) {
+    public WishlistItemDto addToWishlist(UUID tenantUserId, AddToWishlistRequest request) {
         log.info("Tenant {} attempting to add property {} to wishlist", tenantUserId, request.getPropertyId());
 
         if (!propertyServiceClient.checkPropertyExists(request.getPropertyId())) {
@@ -65,7 +65,7 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public List<WishlistItemDto> getWishlist(String tenantUserId) {
+    public List<WishlistItemDto> getWishlist(UUID tenantUserId) {
         log.debug("Fetching wishlist for tenant {}", tenantUserId);
         List<WishlistItem> items = wishlistItemRepository.findByTenantUserId(tenantUserId);
 
@@ -88,18 +88,18 @@ public class NotificationService {
 
     }
     @Transactional
-    public void removeFromWishlist(String tenantUserId, String propertyId) {
+    public void removeFromWishlist(UUID tenantUserId, UUID propertyId) {
         log.info("Tenant {} attempting to remove property {} from wishlist", tenantUserId, propertyId);
-        String deleteCount = wishlistItemRepository.deleteByTenantUserIdAndPropertyId(tenantUserId, propertyId);
-        if (deleteCount.isBlank()) {
-             log.warn("Wishlist remove failed: Tenant {} did not have property {} in wishlist", tenantUserId, propertyId);
+        WishlistItem deleteCount = wishlistItemRepository.deleteByTenantUserIdAndPropertyId(tenantUserId, propertyId);
+        if (deleteCount.toString().isBlank()) {
+             log.warn("Wishlist remove failed: Tenant {} did not have property {} in wishlist", tenantUserId.toString(), propertyId.toString());
             throw new ResourceNotFoundException("Property " + propertyId + " not found in wishlist for this user.", new ConflictException("Property Not Found"));
         }
-         log.info("Property {} removed from wishlist for tenant {}", propertyId, tenantUserId);
+         log.info("Property {} removed from wishlist for tenant {}", propertyId.toString(), tenantUserId.toString());
     }
 
     @Transactional(readOnly = true)
-    public List<NotificationDto> getNotifications(String userId, boolean unreadOnly) {
+    public List<NotificationDto> getNotifications(UUID userId, boolean unreadOnly) {
         log.debug("Fetching notifications for user {}, unreadOnly={}", userId, unreadOnly);
         List<Notification> notifications;
         if (unreadOnly) {
@@ -111,7 +111,7 @@ public class NotificationService {
     }
 
     @Transactional
-    public NotificationDto markNotificationAsRead(String userId, String notificationId) {
+    public NotificationDto markNotificationAsRead(UUID userId, UUID notificationId) {
          log.info("User {} attempting to mark notification {} as read", userId, notificationId);
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> {
@@ -168,7 +168,7 @@ public class NotificationService {
     }
 
     @Transactional 
-    public void notifyWishlistUsersOnVacancy(String propertyId) {
+    public void notifyWishlistUsersOnVacancy(UUID propertyId) {
          log.info("Processing vacancy notification for property {}", propertyId);
 
          String propertyName = propertyServiceClient.getPropertySummary(propertyId)

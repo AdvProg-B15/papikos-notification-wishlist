@@ -4,13 +4,14 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class InternalNotificationRequest {
     @NotNull(message = "")
-    private String recipientUserId;
+    private UUID recipientUserId;
 
     @NotNull(message = "")
     private NotificationType type;
@@ -22,9 +23,9 @@ public class InternalNotificationRequest {
     private String message;
 
     @NotNull(message = "")
-    private String relatedPropertyId;
+    private UUID relatedPropertyId;
 
     @NotNull(message = "")
-    private String relatedRentalId;
+    private UUID relatedRentalId;
 
 }

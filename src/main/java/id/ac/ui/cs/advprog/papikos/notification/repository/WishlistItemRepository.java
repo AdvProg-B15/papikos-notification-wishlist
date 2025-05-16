@@ -7,21 +7,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface WishlistItemRepository extends JpaRepository<WishlistItem, Long> {
+public interface WishlistItemRepository extends JpaRepository<WishlistItem, UUID> {
 
-    List<WishlistItem> findByTenantUserId(String tenantUserId);
+    List<WishlistItem> findByTenantUserId(UUID tenantUserId);
 
-    boolean existsByTenantUserIdAndPropertyId(String tenantUserId, String propertyId);
+    boolean existsByTenantUserIdAndPropertyId(UUID tenantUserId, UUID propertyId);
 
     @Transactional 
-    String deleteByTenantUserIdAndPropertyId(String tenantUserId, String propertyId);
+    WishlistItem deleteByTenantUserIdAndPropertyId(UUID tenantUserId, UUID propertyId);
 
-    List<WishlistItem> findByPropertyId(String propertyId);
+    List<WishlistItem> findByPropertyId(UUID propertyId);
 
-    Optional<WishlistItem> findByTenantUserIdAndPropertyId(String tenantUserId, String propertyId);
+    Optional<WishlistItem> findByTenantUserIdAndPropertyId(UUID tenantUserId, UUID propertyId);
 
-    Optional<List<WishlistItem>> findByTenantUserIdOrderByCreatedAtDesc(String tenantUserId);
-    Optional<List<String>> findTenantUserIdsByPropertyId(String propertyId);
+    Optional<List<WishlistItem>> findByTenantUserIdOrderByCreatedAtDesc(UUID tenantUserId);
+    Optional<List<UUID>> findTenantUserIdsByPropertyId(UUID propertyId);
 }

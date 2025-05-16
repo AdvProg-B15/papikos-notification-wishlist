@@ -1,6 +1,6 @@
 package id.ac.ui.cs.advprog.papikos.notification.dto;
 
-import jakarta.validation.constraints.*;
+//import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;

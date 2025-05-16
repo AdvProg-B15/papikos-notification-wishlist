@@ -4,25 +4,37 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import java.util.UUID;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "notifications", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"notificationId", "relatedPropertyId","relatedRentalId", "recipientUserId"} )
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
+@ToString
 @EntityListeners(AuditingEntityListener.class)
 public class Notification {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private String notificationId;
+    @GeneratedValue
+    @UuidGenerator
+    @Column(columnDefinition = "uuid")
+    private UUID notificationId;
 
-    @Column // Nullable for broadcast
-    private String recipientUserId; // Logical FK to User in Auth Service
+    @Column(columnDefinition = "uuid", nullable = false)
+    private UUID recipientUserId; // Logical FK to User in Auth Service
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -37,11 +49,11 @@ public class Notification {
     @Column(nullable = false)
     private boolean isRead = false;
 
-    @Column // Nullable
-    private String relatedPropertyId; // Logical FK to Property Service
+    @Column(nullable = false, columnDefinition = "uuid") // Nullable
+    private UUID relatedPropertyId; // Logical FK to Property Service
 
-    @Column // Nullable
-    private String relatedRentalId; // Logical FK to Rental Service
+    @Column(nullable = false, columnDefinition = "uuid") // Nullable
+    private UUID relatedRentalId; // Logical FK to Rental Service
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

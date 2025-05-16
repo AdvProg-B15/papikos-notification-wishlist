@@ -1,8 +1,9 @@
 package id.ac.ui.cs.advprog.papikos.notification.dto;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import java.util.UUID;
 /**
  * Represents summarized property information needed within the Notification service.
  * NOTE: In a real microservices architecture, this data structure mirrors data
@@ -14,7 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PropertySummaryDto {
 
-    private String propertyId;
+    private UUID propertyId;
 
     private String name;
 

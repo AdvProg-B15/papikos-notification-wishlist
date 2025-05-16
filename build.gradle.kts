@@ -28,6 +28,10 @@ val junitJupiterVersion = "5.9.1"
 val mockitoVersion = "5.2.0"
 
 dependencies {
+    implementation("jakarta.persistence:jakarta.persistence-api:3.1.0")
+    implementation("jakarta.validation:jakarta.validation-api:3.0.2")
+    implementation("jakarta.annotation:jakarta.annotation-api:2.1.1")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -39,6 +43,7 @@ dependencies {
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.projectlombok:lombok")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.amqp:spring-rabbit-test")
     testImplementation("org.springframework.security:spring-security-test")
