@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.papikos.notification.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.UUID;
 /**
  * Represents summarized property information needed within the Notification service.
@@ -15,6 +16,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PropertySummaryDto {
 
+    @JsonProperty("id")
     private UUID propertyId;
 
     private String name;
@@ -22,6 +24,7 @@ public class PropertySummaryDto {
     // Represents the address; might be simplified to city/area in a real implementation.
     private String address;
 
+    @JsonProperty("pricePerMonth")
     private Double monthlyRentPrice;
 
     // Consider adding other useful summary fields like a thumbnail image URL if needed.

@@ -18,46 +18,36 @@ import lombok.Data;
 import java.util.List;
 import java.util.UUID;
 
+import id.ac.ui.cs.advprog.papikos.notification.client.PropertyServiceClient;
+
 @RestController
-@RequestMapping("/api/v1") // Assuming a base path
+@RequestMapping("") // Assuming a base path
 @RequiredArgsConstructor
 public class NotificationController {
+    private final PropertyServiceClient propertyServiceClient = new PropertyServiceClient();
 
     private static final Logger log = LoggerFactory.getLogger(NotificationController.class);
     private final NotificationService notificationService;
 
     // Helper method to extract user ID (replace with your actual principal details)
     private UUID getCurrentUserId(Object principal) {
-        if (principal instanceof UserDetails) {
-             // If using UserDetails, you might need to parse the username if it's the ID,
-             // or use a custom UserDetails implementation that holds the ID.
-             // This is a common point of customization.
-             // For example, if username IS the ID:
-             // return Long.parseLong(((UserDetails) principal).getUsername());
-             // --- OR --- If using a custom principal:
-             // return ((CustomUserDetails) principal).getId();
-             // --- Placeholder --- return a default/test ID if not implemented
-             log.warn("Security principal type not fully handled: {}. Returning placeholder ID 1L.", principal.getClass().getName());
-             // TODO: PARSE THE USER DETAIL -> USERID
-             return new UUID(9696,9696); // !!! REPLACE WITH ACTUAL LOGIC !!!
-        } else if (principal instanceof String) {
-            try { // If the principal is just the user ID string
-                return new UUID(6969,6969);
-            } catch (NumberFormatException e) {
-                 log.error("Could not parse user ID from Principal String: {}", principal);
-                 throw new IllegalStateException("Invalid Principal format");
+        if (principal instanceof String userIdStr) {
+            try {
+                return UUID.fromString(userIdStr);
+            } catch (IllegalArgumentException e) {
+                log.error("Invalid UUID format: {}", userIdStr);
+                throw new IllegalStateException("Invalid user ID format");
             }
         }
-        // Handle anonymous or null principal
-        log.error("Could not extract user ID from principal: {}", principal);
+
+        log.error("Unexpected principal type: {}", principal.getClass().getName());
         throw new IllegalStateException("Cannot determine current user ID");
     }
-
 
     // === Wishlist Endpoints ===
 
     @PostMapping("/wishlist")
-    //@PreAuthorize("hasRole('TENANT')") // Only tenants can add to wishlist
+    @PreAuthorize("hasRole('TENANT')") // Only tenants can add to wishlist
     public ResponseEntity<WishlistItemDto> addToWishlist(
             @RequestBody AddToWishlistRequest request,
             @AuthenticationPrincipal Object principal) { // Inject principal
@@ -68,17 +58,18 @@ public class NotificationController {
     }
 
     @GetMapping("/wishlist")
-    //@PreAuthorize("hasRole('TENANT')")
+    @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<List<WishlistItemDto>> getWishlist(
              @AuthenticationPrincipal Object principal) {
         UUID tenantUserId = getCurrentUserId(principal);
-         log.info("API Request: Tenant {} retrieving wishlist", tenantUserId);
+        System.out.println(principal.toString());
+        log.info("API Request: Tenant {} retrieving wishlist", tenantUserId);
         List<WishlistItemDto> wishlist = notificationService.getWishlist(tenantUserId);
         return ResponseEntity.ok(wishlist);
     }
 
     @DeleteMapping("/wishlist/{propertyId}")
-    //@PreAuthorize("hasRole('TENANT')")
+    @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<Void> removeFromWishlist(
             @PathVariable UUID propertyId,
              @AuthenticationPrincipal Object principal) {
@@ -91,7 +82,7 @@ public class NotificationController {
     // === Notification Endpoints ===
 
     @GetMapping("/notifications")
-    //@PreAuthorize("isAuthenticated()") // Any authenticated user can get their notifications
+    @PreAuthorize("isAuthenticated()") // Any authenticated user can get their notifications
     public ResponseEntity<List<NotificationDto>> getNotifications(
             @RequestParam(required = false, defaultValue = "false") boolean unreadOnly,
              @AuthenticationPrincipal Object principal) {
@@ -102,7 +93,7 @@ public class NotificationController {
     }
 
     @PatchMapping("/notifications/{notificationId}/read")
-    //@PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<NotificationDto> markNotificationAsRead(
             @PathVariable UUID notificationId,
              @AuthenticationPrincipal Object principal) {
@@ -113,7 +104,7 @@ public class NotificationController {
     }
 
     @PostMapping("/notifications/broadcast")
-    //@PreAuthorize("hasRole('ADMIN')") // Only Admins can broadcast
+    @PreAuthorize("hasRole('ADMIN')") // Only Admins can broadcast
     public ResponseEntity<NotificationDto> sendBroadcastNotification(
             @RequestBody BroadcastNotificationRequest request) {
         log.info("API Request: Admin sending broadcast notification");
