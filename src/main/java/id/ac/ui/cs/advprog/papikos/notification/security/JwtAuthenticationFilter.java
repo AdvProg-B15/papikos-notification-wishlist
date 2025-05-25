@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final String VERIFY_URL = "http://localhost:8000/api/token/verify/";
+    private static final String DECODE_URL = "http://localhost:8000/api/token/decode/";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -36,8 +36,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
+
         try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(VERIFY_URL).openConnection();
+            // Send POST to Django decode endpoint
+            HttpURLConnection conn = (HttpURLConnection) new URL(DECODE_URL).openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
@@ -48,31 +50,42 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             if (conn.getResponseCode() == 200) {
-                // ✅ Read JSON response to extract role
-                InputStream responseStream = conn.getInputStream();
-                String result = new BufferedReader(new InputStreamReader(responseStream))
-                        .lines().collect(Collectors.joining());
+                String result;
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                    result = br.lines().collect(Collectors.joining());
+                }
 
                 ObjectMapper mapper = new ObjectMapper();
-                JsonNode jsonNode = mapper.readTree(result);
+                JsonNode payload = mapper.readTree(result);
 
-                String role = jsonNode.has("role") ? jsonNode.get("role").asText() : "USER";
+                String userId = payload.has("user_id") ? payload.get("user_id").asText() : null;
+                String role = payload.has("role") ? payload.get("role").asText() : null;
+
+                if (userId == null || role == null) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing user_id or role in token");
+                    return;
+                }
 
                 List<GrantedAuthority> authorities = List.of(
                         new SimpleGrantedAuthority("ROLE_" + role.toUpperCase())
                 );
 
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken("user", null, authorities);
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                // DEBUG: Print assigned authorities
+                System.out.println("Authenticated user: " + userId);
+                System.out.println("Granted authorities: " + authorities);
+
             } else {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token from decode endpoint");
                 return;
             }
 
         } catch (Exception e) {
             e.printStackTrace();
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token verification failed");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token verification failed: " + e.getMessage());
             return;
         }
 

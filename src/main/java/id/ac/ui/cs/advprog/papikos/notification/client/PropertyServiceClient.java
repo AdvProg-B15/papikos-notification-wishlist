@@ -21,6 +21,14 @@ public class PropertyServiceClient {
                 dto.getMonthlyRentPrice() == null;
     }
 
+    public Boolean checkRentalExists(UUID rentalId) {
+        ResponseEntity<String> response = restTemplate.getForEntity(URL + "/checkRental", String.class);
+        if (response.getStatusCode().is2xxSuccessful()) {
+            return true;
+        }
+        return false;
+    }
+
     public boolean checkPropertyExists(UUID propertyId) {
         ResponseEntity<PropertySummaryDto> response =
                 restTemplate.getForEntity(URL + "/kos/" + propertyId.toString(), PropertySummaryDto.class);

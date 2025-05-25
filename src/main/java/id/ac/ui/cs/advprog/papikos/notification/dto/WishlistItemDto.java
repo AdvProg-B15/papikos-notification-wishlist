@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.papikos.notification.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class WishlistItemDto {
 
     private PropertySummaryDto property; // Embedded summary of the wishlisted property
 
+    @CreatedDate
     private Instant createdAt; // Timestamp when the item was added
 
     public UUID getPropertyId() {

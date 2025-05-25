@@ -87,11 +87,12 @@ public class NotificationService {
     public void sendUserNotification(String recipientId, NotificationType type, String title, String message, Object something, String relatedId) {
 
     }
+
     @Transactional
     public void removeFromWishlist(UUID tenantUserId, UUID propertyId) {
         log.info("Tenant {} attempting to remove property {} from wishlist", tenantUserId, propertyId);
-        WishlistItem deleteCount = wishlistItemRepository.deleteByTenantUserIdAndPropertyId(tenantUserId, propertyId);
-        if (deleteCount.toString().isBlank()) {
+        int deleteCount = wishlistItemRepository.deleteByTenantUserIdAndPropertyId(tenantUserId, propertyId);
+        if (0 == deleteCount) {
              log.warn("Wishlist remove failed: Tenant {} did not have property {} in wishlist", tenantUserId.toString(), propertyId.toString());
             throw new ResourceNotFoundException("Property " + propertyId + " not found in wishlist for this user.", new ConflictException("Property Not Found"));
         }
@@ -167,33 +168,88 @@ public class NotificationService {
         return NotificationDto.fromEntity(saved);
     }
 
+    @Transactional
+    public void notifyApprovedAccount(UUID recipientId) {
+        log.info("Notifying approved account for recipient {}", recipientId);
+        Notification notification = new Notification();
+        notification.setRecipientUserId(recipientId);
+        notification.setNotificationType(NotificationType.ACCOUNT_APPROVED);
+        notification.setRead(false);
+        notification.setTitle("Approved Account");
+        notification.setMessage("Approved account for recipient " + recipientId.toString());
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public NotificationDto notifyRentalUpdate(RentalUpdateRequest request) {
+        log.info("Rental update for Rental Id: {}", request.getRelatedRentalId());
+
+        Boolean rentalExist = propertyServiceClient.checkRentalExists(request.getRelatedRentalId());
+        if (!rentalExist) {
+            log.info("Rental {} does not exist", request.getRelatedRentalId());
+            return null;
+        }
+
+        PropertySummaryDto propertySummary = propertyServiceClient.getPropertySummary(request.getRelatedPropertyId()).orElse(null);
+        if (propertySummary == null) {
+            log.info("Rental update failed: Property {} not found", request.getRelatedPropertyId());
+            return null;
+        }
+
+        Notification notification = new Notification();
+        notification.setRecipientUserId(request.getRecipientId());
+        notification.setNotificationType(NotificationType.RENTAL_UPDATE);
+        notification.setMessage(request.getMessage());
+        notification.setRelatedRentalId(request.getRelatedRentalId());
+        notification.setRelatedPropertyId(request.getRelatedPropertyId());
+        notification.setTitle(request.getTitle());
+
+        notificationRepository.save(notification);
+
+        return NotificationDto.fromEntity(notification);
+    }
+
+    @Transactional
+    public void notifyPaymentUpdate(UUID rentalId) {
+        log.info("Payment update for rental {}", rentalId);
+
+        Notification notification = new Notification();
+        notification.setRecipientUserId(rentalId);
+        notification.setNotificationType(NotificationType.PAYMENT_UPDATE);
+        notification.setMessage("Payment update for rental " + rentalId.toString());
+        notification.setTitle("Payment update");
+
+        notificationRepository.save(notification);
+    }
+
     @Transactional 
-    public void notifyWishlistUsersOnVacancy(UUID propertyId) {
-         log.info("Processing vacancy notification for property {}", propertyId);
+    public List<NotificationDto> notifyWishlistUsersOnVacancy(VacancyUpdateNotification request) {
+         log.info("Processing vacancy notification for property {}", request.getRelatedPropertyId());
 
-         String propertyName = propertyServiceClient.getPropertySummary(propertyId)
+         String propertyName = propertyServiceClient.getPropertySummary(request.getRelatedPropertyId())
              .map(PropertySummaryDto::getName)
-             .orElse("Property " + propertyId); // Fallback name
+             .orElse("Property " + request.getRelatedPropertyId()); // Fallback name
 
-         List<WishlistItem> wishlistItems = wishlistItemRepository.findByPropertyId(propertyId);
+         List<WishlistItem> wishlistItems = wishlistItemRepository.findByPropertyId(request.getRelatedPropertyId());
 
          if (wishlistItems.isEmpty()) {
-             log.info("No users found wishlisting property {}", propertyId);
-             return;
+             log.info("No users found wishlisting property {}", request.getRelatedPropertyId());
+             return null;
          }
 
          List<Notification> notificationsToSend = wishlistItems.stream().map(item -> {
              Notification notification = new Notification();
              notification.setRecipientUserId(item.getTenantUserId());
              notification.setNotificationType(NotificationType.WISHLIST_VACANCY);
-             notification.setTitle("Room Available!");
-             notification.setMessage("A room has become available at '" + propertyName + "' which is on your wishlist.");
+             notification.setTitle(request.getTitle());
+             notification.setMessage(request.getMessage());
              notification.setRead(false);
-             notification.setRelatedPropertyId(propertyId);
+             notification.setRelatedPropertyId(request.getRelatedPropertyId());
              return notification;
-         }).collect(Collectors.toList());
+         }).toList();
 
          notificationRepository.saveAll(notificationsToSend);
-         log.info("Sent {} vacancy notifications for property {}", notificationsToSend.size(), propertyId);
+         log.info("Sent {} vacancy notifications for property {}", notificationsToSend.size(), request.getRelatedPropertyId());
+         return notificationsToSend.stream().map(NotificationDto::fromEntity).collect(Collectors.toList());
     }
 }

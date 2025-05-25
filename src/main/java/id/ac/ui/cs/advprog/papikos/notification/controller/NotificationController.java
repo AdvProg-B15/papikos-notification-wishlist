@@ -10,9 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-// Import Principal or SecurityContextHolder to get user ID
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails; // Or your custom Principal class
 import org.springframework.web.bind.annotation.*;
 import lombok.Data;
 import java.util.List;
@@ -103,45 +101,33 @@ public class NotificationController {
         return ResponseEntity.ok(updatedNotification);
     }
 
+    @PostMapping("/notifications/rentalUpdate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<NotificationDto> rentalUpdateNotification(
+            @RequestBody RentalUpdateRequest request,
+            @AuthenticationPrincipal Object principal) {
+        log.info("API Request: User {} renting notification {}",request.getRecipientId(), request);
+        NotificationDto notificationDto = notificationService.notifyRentalUpdate(request);
+        return ResponseEntity.ok(notificationDto);
+    }
+
+
+    @PostMapping("/notifications/vacancy")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<NotificationDto>> sendVacancyNotification(
+            @RequestBody VacancyUpdateNotification request,
+            @AuthenticationPrincipal Object principal) {
+            log.info("API Request: User {} sending vacancy notification {}", principal, request);
+            List<NotificationDto> notifications = notificationService.notifyWishlistUsersOnVacancy(request);
+            return ResponseEntity.ok(notifications);
+    }
+
     @PostMapping("/notifications/broadcast")
     @PreAuthorize("hasRole('ADMIN')") // Only Admins can broadcast
     public ResponseEntity<NotificationDto> sendBroadcastNotification(
             @RequestBody BroadcastNotificationRequest request) {
         log.info("API Request: Admin sending broadcast notification");
-        // Service returns DTO, wrap it for acceptance status
          NotificationDto notificationDto = notificationService.sendBroadcastNotification(request);
-        // Accepted is suitable as it might be processed async later
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(notificationDto);
     }
-
-    // === Internal Endpoints (Usually NOT exposed via Gateway, called service-to-service) ===
-    // These might be better implemented using async events (e.g., Kafka, RabbitMQ)
-    // But providing REST endpoints for completeness if needed for internal sync calls.
-
-    @PostMapping("/notifications/internal/send")
-    // Add security here if called directly, e.g., require specific service role/token
-    // @PreAuthorize("hasAuthority('SERVICE_INTERNAL')")
-    public ResponseEntity<NotificationDto> sendInternalNotification(
-            @RequestBody InternalNotificationRequest request) {
-        log.info("INTERNAL API Request: Send notification type {} to user {}", request.getType(), request.getRecipientUserId());
-         NotificationDto notificationDto = notificationService.sendInternalNotification(request);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(notificationDto);
-    }
-
-     @PostMapping("/notifications/internal/vacancy")
-     // Add security here if called directly
-     // @PreAuthorize("hasAuthority('SERVICE_INTERNAL')")
-     public ResponseEntity<Void> triggerVacancyNotification(
-              @RequestBody VacancyTriggerRequest request) { // Simple DTO with propertyId
-         log.info("INTERNAL API Request: Trigger vacancy notifications for property {}", request.getPropertyId());
-         notificationService.notifyWishlistUsersOnVacancy(request.getPropertyId());
-         return ResponseEntity.accepted().build(); // Accepted for async processing
-     }
-
-     // Simple DTO for the internal vacancy trigger endpoint
-     @Data
-     static class VacancyTriggerRequest {
-         //@NotNull
-         private UUID propertyId;
-     }
 }

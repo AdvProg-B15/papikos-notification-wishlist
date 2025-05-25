@@ -49,10 +49,10 @@ public class Notification {
     @Column(nullable = false)
     private boolean isRead = false;
 
-    @Column(nullable = false, columnDefinition = "uuid") // Nullable
+    @Column(columnDefinition = "uuid") // Nullable
     private UUID relatedPropertyId; // Logical FK to Property Service
 
-    @Column(nullable = false, columnDefinition = "uuid") // Nullable
+    @Column(columnDefinition = "uuid") // Nullable
     private UUID relatedRentalId; // Logical FK to Rental Service
 
     @CreatedDate

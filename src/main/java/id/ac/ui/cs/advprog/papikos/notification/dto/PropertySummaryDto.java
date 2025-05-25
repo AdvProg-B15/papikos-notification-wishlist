@@ -16,17 +16,11 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PropertySummaryDto {
 
-    @JsonProperty("id")
     private UUID propertyId;
 
     private String name;
 
-    // Represents the address; might be simplified to city/area in a real implementation.
     private String address;
 
-    @JsonProperty("pricePerMonth")
     private Double monthlyRentPrice;
-
-    // Consider adding other useful summary fields like a thumbnail image URL if needed.
-    // private String thumbnailUrl;
 }

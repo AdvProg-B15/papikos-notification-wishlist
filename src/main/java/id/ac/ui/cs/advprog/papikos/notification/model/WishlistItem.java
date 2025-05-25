@@ -40,7 +40,7 @@ public class WishlistItem {
     private UUID propertyId; // Logical FK to Property in Property Service
 
     @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @Column(updatable = false)
     private Instant createdAt;
 
     // Constructor for service layer usage
