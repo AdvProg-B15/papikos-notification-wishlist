@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.math.BigDecimal;
 import java.util.UUID;
 /**
  * Represents summarized property information needed within the Notification service.
@@ -22,5 +24,5 @@ public class PropertySummaryDto {
 
     private String address;
 
-    private Double monthlyRentPrice;
+    private BigDecimal monthlyRentPrice;
 }

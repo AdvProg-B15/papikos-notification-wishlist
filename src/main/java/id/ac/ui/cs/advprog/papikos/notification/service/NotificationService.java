@@ -1,6 +1,8 @@
 package id.ac.ui.cs.advprog.papikos.notification.service;
 
-import id.ac.ui.cs.advprog.papikos.notification.client.PropertyServiceClient;
+import id.ac.ui.cs.advprog.papikos.notification.client.KosServiceClient;
+import id.ac.ui.cs.advprog.papikos.notification.client.KosApiResponseWrapper;
+import id.ac.ui.cs.advprog.papikos.notification.client.KosDetailsDto;
 import id.ac.ui.cs.advprog.papikos.notification.dto.*;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ConflictException;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ForbiddenException;
@@ -16,10 +18,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import feign.FeignException;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,20 +34,65 @@ public class NotificationService {
 
     private final WishlistItemRepository wishlistItemRepository;
     private final NotificationRepository notificationRepository;
-    private final PropertyServiceClient propertyServiceClient = new PropertyServiceClient();
+    private final KosServiceClient kosServiceClient;
 
+    /**
+     * Helper method to check if KOS/property exists
+     */
+    private boolean checkKosExists(UUID kosId) {
+        try {
+            KosApiResponseWrapper<KosDetailsDto> response = kosServiceClient.getKosDetailsApiResponse(kosId);
+            return response != null && response.getData() != null && response.getStatus() == 200;
+        } catch (FeignException.NotFound e) {
+            log.warn("KOS not found with ID: {}", kosId);
+            return false;
+        } catch (Exception e) {
+            log.error("Error checking KOS existence for ID {}: {}", kosId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Helper method to get KOS details and convert to PropertySummaryDto
+     */
+    private Optional<PropertySummaryDto> getKosAsPropertySummary(UUID kosId) {
+        try {
+            KosApiResponseWrapper<KosDetailsDto> response = kosServiceClient.getKosDetailsApiResponse(kosId);
+
+            if (response != null && response.getData() != null && response.getStatus() == 200) {
+                KosDetailsDto kosDetails = response.getData();
+                PropertySummaryDto propertySummary = new PropertySummaryDto(
+                        kosDetails.getId(),
+                        kosDetails.getName(),
+                        kosDetails.getAddress(),
+                        kosDetails.getMonthlyRentPrice()
+                );
+                return Optional.of(propertySummary);
+            }
+
+            log.warn("KOS details not found or invalid response for ID: {}", kosId);
+            return Optional.empty();
+
+        } catch (FeignException.NotFound e) {
+            log.warn("KOS not found with ID: {}", kosId);
+            return Optional.empty();
+        } catch (Exception e) {
+            log.error("Error fetching KOS details for ID {}: {}", kosId, e.getMessage());
+            return Optional.empty();
+        }
+    }
 
     @Transactional
     public WishlistItemDto addToWishlist(UUID tenantUserId, AddToWishlistRequest request) {
         log.info("Tenant {} attempting to add property {} to wishlist", tenantUserId, request.getPropertyId());
 
-        if (!propertyServiceClient.checkPropertyExists(request.getPropertyId())) {
-             log.warn("Wishlist add failed: Property {} not found", request.getPropertyId());
+        if (!checkKosExists(request.getPropertyId())) {
+            log.warn("Wishlist add failed: Property {} not found", request.getPropertyId());
             throw new ResourceNotFoundException("Property not found with ID: " + request.getPropertyId(), new NoSuchElementException());
         }
 
         if (wishlistItemRepository.existsByTenantUserIdAndPropertyId(tenantUserId, request.getPropertyId())) {
-             log.warn("Wishlist add failed: Tenant {} already has property {} in wishlist", tenantUserId, request.getPropertyId());
+            log.warn("Wishlist add failed: Tenant {} already has property {} in wishlist", tenantUserId, request.getPropertyId());
             throw new ConflictException("Property " + request.getPropertyId() + " is already in the wishlist.");
         }
 
@@ -51,16 +100,14 @@ public class NotificationService {
         WishlistItem savedItem = wishlistItemRepository.save(newItem);
         log.info("Property {} added to wishlist for tenant {}", request.getPropertyId(), tenantUserId);
 
-
-        PropertySummaryDto propertySummary = propertyServiceClient.getPropertySummary(savedItem.getPropertyId())
-            .orElse(new PropertySummaryDto(savedItem.getPropertyId(), "Property " + savedItem.getPropertyId(), null, null)); // Fallback if summary fetch fails
-
+        PropertySummaryDto propertySummary = getKosAsPropertySummary(savedItem.getPropertyId())
+                .orElse(new PropertySummaryDto(savedItem.getPropertyId(), "Property " + savedItem.getPropertyId(), null, null)); // Fallback if summary fetch fails
 
         return new WishlistItemDto(
-            savedItem.getWishlistItemId(),
-            savedItem.getTenantUserId(),
-            propertySummary, 
-            savedItem.getCreatedAt()
+                savedItem.getWishlistItemId(),
+                savedItem.getTenantUserId(),
+                propertySummary,
+                savedItem.getCreatedAt()
         );
     }
 
@@ -71,21 +118,21 @@ public class NotificationService {
 
         return items.stream().map(item -> {
             // Fetch property summary for each item
-             PropertySummaryDto propertySummary = propertyServiceClient.getPropertySummary(item.getPropertyId())
-                .orElse(new PropertySummaryDto(item.getPropertyId(), "Property " + item.getPropertyId(), null, null)); // Fallback
+            PropertySummaryDto propertySummary = getKosAsPropertySummary(item.getPropertyId())
+                    .orElse(new PropertySummaryDto(item.getPropertyId(), "Property " + item.getPropertyId(), null, null)); // Fallback
 
-             return new WishlistItemDto(
-                item.getWishlistItemId(),
-                item.getTenantUserId(),
-                propertySummary,
-                item.getCreatedAt()
+            return new WishlistItemDto(
+                    item.getWishlistItemId(),
+                    item.getTenantUserId(),
+                    propertySummary,
+                    item.getCreatedAt()
             );
         }).collect(Collectors.toList());
     }
 
     @Transactional
     public void sendUserNotification(String recipientId, NotificationType type, String title, String message, Object something, String relatedId) {
-
+        // Implementation remains the same or can be enhanced based on requirements
     }
 
     @Transactional
@@ -93,10 +140,10 @@ public class NotificationService {
         log.info("Tenant {} attempting to remove property {} from wishlist", tenantUserId, propertyId);
         int deleteCount = wishlistItemRepository.deleteByTenantUserIdAndPropertyId(tenantUserId, propertyId);
         if (0 == deleteCount) {
-             log.warn("Wishlist remove failed: Tenant {} did not have property {} in wishlist", tenantUserId.toString(), propertyId.toString());
+            log.warn("Wishlist remove failed: Tenant {} did not have property {} in wishlist", tenantUserId.toString(), propertyId.toString());
             throw new ResourceNotFoundException("Property " + propertyId + " not found in wishlist for this user.", new ConflictException("Property Not Found"));
         }
-         log.info("Property {} removed from wishlist for tenant {}", propertyId.toString(), tenantUserId.toString());
+        log.info("Property {} removed from wishlist for tenant {}", propertyId.toString(), tenantUserId.toString());
     }
 
     @Transactional(readOnly = true)
@@ -113,22 +160,22 @@ public class NotificationService {
 
     @Transactional
     public NotificationDto markNotificationAsRead(UUID userId, UUID notificationId) {
-         log.info("User {} attempting to mark notification {} as read", userId, notificationId);
+        log.info("User {} attempting to mark notification {} as read", userId, notificationId);
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> {
-                     log.warn("Mark as read failed: Notification {} not found", notificationId);
-                     return new ResourceNotFoundException("Notification not found with ID: " + notificationId, new NoSuchElementException());
+                    log.warn("Mark as read failed: Notification {} not found", notificationId);
+                    return new ResourceNotFoundException("Notification not found with ID: " + notificationId, new NoSuchElementException());
                 });
 
         if (notification.getRecipientUserId() == null || !notification.getRecipientUserId().equals(userId)) {
-             log.warn("Mark as read failed: User {} is not the recipient of notification {}", userId, notificationId);
+            log.warn("Mark as read failed: User {} is not the recipient of notification {}", userId, notificationId);
             throw new ForbiddenException("User is not the recipient of this notification.");
         }
 
         if (!notification.isRead()) {
             notification.setRead(true);
             notification = notificationRepository.save(notification);
-             log.info("Notification {} marked as read for user {}", notificationId, userId);
+            log.info("Notification {} marked as read for user {}", notificationId, userId);
         } else {
             log.debug("Notification {} was already read for user {}", notificationId, userId);
         }
@@ -140,11 +187,11 @@ public class NotificationService {
     public NotificationDto sendBroadcastNotification(BroadcastNotificationRequest request) {
         log.info("Sending broadcast notification: Title='{}'", request.getTitle());
         Notification notification = new Notification();
-        notification.setRecipientUserId(null); 
+        notification.setRecipientUserId(null);
         notification.setNotificationType(NotificationType.BROADCAST);
         notification.setTitle(request.getTitle());
         notification.setMessage(request.getMessage());
-        notification.setRead(false); 
+        notification.setRead(false);
 
         Notification saved = notificationRepository.save(notification);
         log.info("Broadcast notification {} saved", saved.getNotificationId());
@@ -153,7 +200,7 @@ public class NotificationService {
 
     @Transactional
     public NotificationDto sendInternalNotification(InternalNotificationRequest request) {
-         log.info("Sending internal notification: Type={}, Recipient={}, Title='{}'", request.getType(), request.getRecipientUserId(), request.getTitle());
+        log.info("Sending internal notification: Type={}, Recipient={}, Title='{}'", request.getType(), request.getRecipientUserId(), request.getTitle());
         Notification notification = new Notification();
         notification.setRecipientUserId(request.getRecipientUserId());
         notification.setNotificationType(request.getType());
@@ -164,7 +211,7 @@ public class NotificationService {
         notification.setRelatedRentalId(request.getRelatedRentalId());
 
         Notification saved = notificationRepository.save(notification);
-         log.info("Internal notification {} for user {} saved", saved.getNotificationId(), request.getRecipientUserId());
+        log.info("Internal notification {} for user {} saved", saved.getNotificationId(), request.getRecipientUserId());
         return NotificationDto.fromEntity(saved);
     }
 
@@ -184,13 +231,10 @@ public class NotificationService {
     public NotificationDto notifyRentalUpdate(RentalUpdateRequest request) {
         log.info("Rental update for Rental Id: {}", request.getRelatedRentalId());
 
-        Boolean rentalExist = propertyServiceClient.checkRentalExists(request.getRelatedRentalId());
-        if (!rentalExist) {
-            log.info("Rental {} does not exist", request.getRelatedRentalId());
-            return null;
-        }
+        // Note: You might need to create a rental service client similar to KOS service
+        // For now, assuming rental exists - you can implement rental existence check later
 
-        PropertySummaryDto propertySummary = propertyServiceClient.getPropertySummary(request.getRelatedPropertyId()).orElse(null);
+        PropertySummaryDto propertySummary = getKosAsPropertySummary(request.getRelatedPropertyId()).orElse(null);
         if (propertySummary == null) {
             log.info("Rental update failed: Property {} not found", request.getRelatedPropertyId());
             return null;
@@ -222,34 +266,34 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    @Transactional 
+    @Transactional
     public List<NotificationDto> notifyWishlistUsersOnVacancy(VacancyUpdateNotification request) {
-         log.info("Processing vacancy notification for property {}", request.getRelatedPropertyId());
+        log.info("Processing vacancy notification for property {}", request.getRelatedPropertyId());
 
-         String propertyName = propertyServiceClient.getPropertySummary(request.getRelatedPropertyId())
-             .map(PropertySummaryDto::getName)
-             .orElse("Property " + request.getRelatedPropertyId()); // Fallback name
+        String propertyName = getKosAsPropertySummary(request.getRelatedPropertyId())
+                .map(PropertySummaryDto::getName)
+                .orElse("Property " + request.getRelatedPropertyId()); // Fallback name
 
-         List<WishlistItem> wishlistItems = wishlistItemRepository.findByPropertyId(request.getRelatedPropertyId());
+        List<WishlistItem> wishlistItems = wishlistItemRepository.findByPropertyId(request.getRelatedPropertyId());
 
-         if (wishlistItems.isEmpty()) {
-             log.info("No users found wishlisting property {}", request.getRelatedPropertyId());
-             return null;
-         }
+        if (wishlistItems.isEmpty()) {
+            log.info("No users found wishlisting property {}", request.getRelatedPropertyId());
+            return List.of(); // Return empty list instead of null
+        }
 
-         List<Notification> notificationsToSend = wishlistItems.stream().map(item -> {
-             Notification notification = new Notification();
-             notification.setRecipientUserId(item.getTenantUserId());
-             notification.setNotificationType(NotificationType.WISHLIST_VACANCY);
-             notification.setTitle(request.getTitle());
-             notification.setMessage(request.getMessage());
-             notification.setRead(false);
-             notification.setRelatedPropertyId(request.getRelatedPropertyId());
-             return notification;
-         }).toList();
+        List<Notification> notificationsToSend = wishlistItems.stream().map(item -> {
+            Notification notification = new Notification();
+            notification.setRecipientUserId(item.getTenantUserId());
+            notification.setNotificationType(NotificationType.WISHLIST_VACANCY);
+            notification.setTitle(request.getTitle());
+            notification.setMessage(request.getMessage());
+            notification.setRead(false);
+            notification.setRelatedPropertyId(request.getRelatedPropertyId());
+            return notification;
+        }).toList();
 
-         notificationRepository.saveAll(notificationsToSend);
-         log.info("Sent {} vacancy notifications for property {}", notificationsToSend.size(), request.getRelatedPropertyId());
-         return notificationsToSend.stream().map(NotificationDto::fromEntity).collect(Collectors.toList());
+        notificationRepository.saveAll(notificationsToSend);
+        log.info("Sent {} vacancy notifications for property {}", notificationsToSend.size(), request.getRelatedPropertyId());
+        return notificationsToSend.stream().map(NotificationDto::fromEntity).collect(Collectors.toList());
     }
 }

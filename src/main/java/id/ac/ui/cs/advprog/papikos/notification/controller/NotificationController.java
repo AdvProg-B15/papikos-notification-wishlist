@@ -1,6 +1,7 @@
 package id.ac.ui.cs.advprog.papikos.notification.controller;
 
 import id.ac.ui.cs.advprog.papikos.notification.dto.*;
+import id.ac.ui.cs.advprog.papikos.notification.response.ApiResponse;
 import id.ac.ui.cs.advprog.papikos.notification.service.NotificationService;
 //import jakarta.validation.Valid;
 //import jakarta.validation.constraints.NotNull;
@@ -46,88 +47,116 @@ public class NotificationController {
 
     @PostMapping("/wishlist")
     @PreAuthorize("hasRole('TENANT')") // Only tenants can add to wishlist
-    public ResponseEntity<WishlistItemDto> addToWishlist(
+    public ResponseEntity<ApiResponse<WishlistItemDto>> addToWishlist(
             @RequestBody AddToWishlistRequest request,
             @AuthenticationPrincipal Object principal) { // Inject principal
         UUID tenantUserId = getCurrentUserId(principal);
         log.info("API Request: Tenant {} adding property {} to wishlist", tenantUserId, request.getPropertyId());
         WishlistItemDto createdItem = notificationService.addToWishlist(tenantUserId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdItem);
+
+        ApiResponse<WishlistItemDto> response = ApiResponse.<WishlistItemDto>builder()
+                .created(createdItem);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/wishlist")
     @PreAuthorize("hasRole('TENANT')")
-    public ResponseEntity<List<WishlistItemDto>> getWishlist(
-             @AuthenticationPrincipal Object principal) {
+    public ResponseEntity<ApiResponse<List<WishlistItemDto>>> getWishlist(
+            @AuthenticationPrincipal Object principal) {
         UUID tenantUserId = getCurrentUserId(principal);
         System.out.println(principal.toString());
         log.info("API Request: Tenant {} retrieving wishlist", tenantUserId);
         List<WishlistItemDto> wishlist = notificationService.getWishlist(tenantUserId);
-        return ResponseEntity.ok(wishlist);
+
+        ApiResponse<List<WishlistItemDto>> response = ApiResponse.<List<WishlistItemDto>>builder()
+                .ok(wishlist);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/wishlist/{propertyId}")
     @PreAuthorize("hasRole('TENANT')")
-    public ResponseEntity<Void> removeFromWishlist(
+    public ResponseEntity<ApiResponse<Void>> removeFromWishlist(
             @PathVariable UUID propertyId,
-             @AuthenticationPrincipal Object principal) {
+            @AuthenticationPrincipal Object principal) {
         UUID tenantUserId = getCurrentUserId(principal);
         log.info("API Request: Tenant {} removing property {} from wishlist", tenantUserId, propertyId);
         notificationService.removeFromWishlist(tenantUserId, propertyId);
-        return ResponseEntity.noContent().build(); // 204 No Content
+
+        ApiResponse<Void> response = ApiResponse.<Void>builder()
+                .status(HttpStatus.NO_CONTENT)
+                .message("Property removed from wishlist successfully")
+                .build();
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(response);
     }
 
     // === Notification Endpoints ===
 
     @GetMapping("/notifications")
     @PreAuthorize("isAuthenticated()") // Any authenticated user can get their notifications
-    public ResponseEntity<List<NotificationDto>> getNotifications(
+    public ResponseEntity<ApiResponse<List<NotificationDto>>> getNotifications(
             @RequestParam(required = false, defaultValue = "false") boolean unreadOnly,
-             @AuthenticationPrincipal Object principal) {
+            @AuthenticationPrincipal Object principal) {
         UUID userId = getCurrentUserId(principal);
         log.info("API Request: User {} retrieving notifications (unreadOnly={})", userId, unreadOnly);
         List<NotificationDto> notifications = notificationService.getNotifications(userId, unreadOnly);
-        return ResponseEntity.ok(notifications);
+
+        ApiResponse<List<NotificationDto>> response = ApiResponse.<List<NotificationDto>>builder()
+                .ok(notifications);
+        return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/notifications/{notificationId}/read")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<NotificationDto> markNotificationAsRead(
+    public ResponseEntity<ApiResponse<NotificationDto>> markNotificationAsRead(
             @PathVariable UUID notificationId,
-             @AuthenticationPrincipal Object principal) {
+            @AuthenticationPrincipal Object principal) {
         UUID userId = getCurrentUserId(principal);
         log.info("API Request: User {} marking notification {} as read", userId, notificationId);
         NotificationDto updatedNotification = notificationService.markNotificationAsRead(userId, notificationId);
-        return ResponseEntity.ok(updatedNotification);
+
+        ApiResponse<NotificationDto> response = ApiResponse.<NotificationDto>builder()
+                .ok(updatedNotification);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/notifications/rentalUpdate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<NotificationDto> rentalUpdateNotification(
+    public ResponseEntity<ApiResponse<NotificationDto>> rentalUpdateNotification(
             @RequestBody RentalUpdateRequest request,
             @AuthenticationPrincipal Object principal) {
         log.info("API Request: User {} renting notification {}",request.getRecipientId(), request);
         NotificationDto notificationDto = notificationService.notifyRentalUpdate(request);
-        return ResponseEntity.ok(notificationDto);
-    }
 
+        ApiResponse<NotificationDto> response = ApiResponse.<NotificationDto>builder()
+                .ok(notificationDto);
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping("/notifications/vacancy")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<NotificationDto>> sendVacancyNotification(
+    public ResponseEntity<ApiResponse<List<NotificationDto>>> sendVacancyNotification(
             @RequestBody VacancyUpdateNotification request,
             @AuthenticationPrincipal Object principal) {
-            log.info("API Request: User {} sending vacancy notification {}", principal, request);
-            List<NotificationDto> notifications = notificationService.notifyWishlistUsersOnVacancy(request);
-            return ResponseEntity.ok(notifications);
+        log.info("API Request: User {} sending vacancy notification {}", principal, request);
+        List<NotificationDto> notifications = notificationService.notifyWishlistUsersOnVacancy(request);
+
+        ApiResponse<List<NotificationDto>> response = ApiResponse.<List<NotificationDto>>builder()
+                .ok(notifications);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/notifications/broadcast")
     @PreAuthorize("hasRole('ADMIN')") // Only Admins can broadcast
-    public ResponseEntity<NotificationDto> sendBroadcastNotification(
+    public ResponseEntity<ApiResponse<NotificationDto>> sendBroadcastNotification(
             @RequestBody BroadcastNotificationRequest request) {
         log.info("API Request: Admin sending broadcast notification");
-         NotificationDto notificationDto = notificationService.sendBroadcastNotification(request);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(notificationDto);
+        NotificationDto notificationDto = notificationService.sendBroadcastNotification(request);
+
+        ApiResponse<NotificationDto> response = ApiResponse.<NotificationDto>builder()
+                .status(HttpStatus.ACCEPTED)
+                .message("Broadcast notification sent successfully")
+                .data(notificationDto)
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }

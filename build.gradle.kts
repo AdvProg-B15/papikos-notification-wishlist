@@ -1,9 +1,8 @@
-
-plugins { java
+plugins {
+    java
     jacoco
-    id("org.springframework.boot") version "3.4.4"
+    id("org.springframework.boot") version "3.3.3"
     id("io.spring.dependency-management") version "1.1.7"
-    id("java")
 }
 
 group = "id.ac.ui.cs.advprog.papikos"
@@ -24,14 +23,19 @@ configurations {
 repositories {
     mavenCentral()
 }
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:2023.0.1")
+    }
+}
+
+val seleniumJavaVersion = "4.14.1"
+val seleniumJupiterVersion = "5.0.1"
+val webdrivermanagerVersion = "5.6.3"
 val junitJupiterVersion = "5.9.1"
-val mockitoVersion = "5.2.0"
 
 dependencies {
-    implementation("jakarta.persistence:jakarta.persistence-api:3.1.0")
-    implementation("jakarta.validation:jakarta.validation-api:3.0.2")
-    implementation("jakarta.annotation:jakarta.annotation-api:2.1.1")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-amqp")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -43,30 +47,60 @@ dependencies {
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.projectlombok:lombok")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
-
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.amqp:spring-rabbit-test")
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
-    testImplementation("org.mockito:mockito-inline:$mockitoVersion")
-    testImplementation("org.mockito:mockito-junit-jupiter:$mockitoVersion")
-}
 
-tasks.test {
-    filter {
-        excludeTestsMatching("*FunctionalTest")
-    }
-    finalizedBy(tasks.jacocoTestReport)
+    testImplementation("org.seleniumhq.selenium:selenium-java:$seleniumJavaVersion")
+    testImplementation("io.github.bonigarcia:selenium-jupiter:$seleniumJupiterVersion")
+    testImplementation("io.github.bonigarcia:webdrivermanager:$webdrivermanagerVersion")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+    testImplementation("com.h2database:h2")
+
+    implementation("jakarta.validation:jakarta.validation-api:3.0.2")
+    implementation("org.hibernate.validator:hibernate-validator:8.0.1.Final")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
+
+    implementation ("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 }
 
 tasks.register<Test>("unitTest") {
     description = "Runs unit tests."
     group = "verification"
+
+    filter {
+        excludeTestsMatching("*FunctionalTest")
+    }
+}
+
+tasks.register<Test>("functionalTest") {
+    description = "Runs functional tests."
+    group = "verification"
+
+    filter {
+        includeTestsMatching("*FunctionalTest")
+    }
 }
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+}
+
+tasks.test{
+    filter{
+        excludeTestsMatching("*FunctionalTest")
+    }
+
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
