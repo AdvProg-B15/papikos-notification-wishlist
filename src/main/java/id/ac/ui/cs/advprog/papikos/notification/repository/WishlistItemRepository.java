@@ -17,7 +17,7 @@ public interface WishlistItemRepository extends JpaRepository<WishlistItem, UUID
     boolean existsByTenantUserIdAndPropertyId(UUID tenantUserId, UUID propertyId);
 
     @Transactional 
-    WishlistItem deleteByTenantUserIdAndPropertyId(UUID tenantUserId, UUID propertyId);
+    int deleteByTenantUserIdAndPropertyId(UUID tenantUserId, UUID propertyId);
 
     List<WishlistItem> findByPropertyId(UUID propertyId);
 
