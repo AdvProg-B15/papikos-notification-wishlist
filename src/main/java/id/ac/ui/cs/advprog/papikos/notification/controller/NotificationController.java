@@ -1,6 +1,9 @@
 package id.ac.ui.cs.advprog.papikos.notification.controller;
 
 import id.ac.ui.cs.advprog.papikos.notification.dto.*;
+import id.ac.ui.cs.advprog.papikos.notification.exception.ResourceNotFoundException;
+import id.ac.ui.cs.advprog.papikos.notification.exception.ServiceInteractionException;
+import id.ac.ui.cs.advprog.papikos.notification.exception.ServiceUnavailableException;
 import id.ac.ui.cs.advprog.papikos.notification.response.ApiResponse;
 import id.ac.ui.cs.advprog.papikos.notification.service.NotificationService;
 //import jakarta.validation.Valid;
@@ -20,7 +23,7 @@ import java.util.UUID;
 import id.ac.ui.cs.advprog.papikos.notification.client.PropertyServiceClient;
 
 @RestController
-@RequestMapping("") // Assuming a base path
+@RequestMapping("/api/v1") // Assuming a base path
 @RequiredArgsConstructor
 public class NotificationController {
     private final PropertyServiceClient propertyServiceClient = new PropertyServiceClient();
@@ -52,11 +55,18 @@ public class NotificationController {
             @AuthenticationPrincipal Object principal) { // Inject principal
         UUID tenantUserId = getCurrentUserId(principal);
         log.info("API Request: Tenant {} adding property {} to wishlist", tenantUserId, request.getPropertyId());
-        WishlistItemDto createdItem = notificationService.addToWishlist(tenantUserId, request);
+        try {
+            WishlistItemDto createdItem = notificationService.addToWishlist(tenantUserId, request);
+            ApiResponse<WishlistItemDto> response = ApiResponse.<WishlistItemDto>builder()
+                    .created(createdItem);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
-        ApiResponse<WishlistItemDto> response = ApiResponse.<WishlistItemDto>builder()
-                .created(createdItem);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (ServiceInteractionException e) {
+            throw new RuntimeException(e);
+        } catch (ServiceUnavailableException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     @GetMapping("/wishlist")
@@ -125,11 +135,19 @@ public class NotificationController {
             @RequestBody RentalUpdateRequest request,
             @AuthenticationPrincipal Object principal) {
         log.info("API Request: User {} renting notification {}",request.getRecipientId(), request);
-        NotificationDto notificationDto = notificationService.notifyRentalUpdate(request);
+        try {
+            NotificationDto notificationDto = notificationService.notifyRentalUpdate(request);
+            ApiResponse<NotificationDto> response = ApiResponse.<NotificationDto>builder()
+                    .ok(notificationDto);
+            return ResponseEntity.ok(response);
+        } catch (ServiceInteractionException e) {
+            throw new RuntimeException(e);
+        } catch (ServiceUnavailableException e) {
+            throw new RuntimeException(e);
+        } catch (ResourceNotFoundException e) {
+            throw new RuntimeException(e);
+        }
 
-        ApiResponse<NotificationDto> response = ApiResponse.<NotificationDto>builder()
-                .ok(notificationDto);
-        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/notifications/vacancy")

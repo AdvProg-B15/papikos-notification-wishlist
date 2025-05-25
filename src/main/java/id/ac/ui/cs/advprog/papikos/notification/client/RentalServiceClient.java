@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import java.util.UUID;
 
-@FeignClient(name = "kos-service", url = "${kos.service.url:http://localhost:8081/api/v1}")
-public interface KosServiceClient {
+@FeignClient(name = "rental-service", url = "${rental.service.url:http://localhost:8081/api/v1}")
+public interface RentalServiceClient {
 
-    @GetMapping("/{kosId}")
-    ApiResponseWrapper<KosDetailsDto> getKosDetailsApiResponse(@PathVariable("kosId") UUID kosId);
+    @GetMapping("/{rentalId}")
+    ApiResponseWrapper<RentalDetailsDto> getRentalDetail(@PathVariable("rentalId") UUID rentalId);
 }

@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class KosApiResponseWrapper<T> {
+public class ApiResponseWrapper<T> {
     private int status;
     private String message;
     private T data;

@@ -7,8 +7,10 @@ FROM gradle:8.13-jdk21 AS builder
 WORKDIR /app
 
 # Copy build files first to leverage Docker cache for dependencies
-COPY build.gradle settings.gradle gradlew ./
+COPY build.gradle.kts settings.gradle.kts gradlew ./
 COPY gradle ./gradle
+
+RUN chmod +x ./gradlew
 
 # Download dependencies. This layer is cached if build files don't change.
 # Run a task that resolves dependencies. `dependencies` task or `build` with `-x` works.
