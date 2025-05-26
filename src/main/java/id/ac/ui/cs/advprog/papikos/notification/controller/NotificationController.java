@@ -54,7 +54,7 @@ public class NotificationController {
     // === Wishlist Endpoints ===
 
     @PostMapping("/wishlist")
-    @PreAuthorize("hasRole('TENANT')") // Only tenants can add to wishlist
+    @PreAuthorize("hasAuthority('TENANT')") // Only tenants can add to wishlist
     public ResponseEntity<ApiResponse<WishlistItemDto>> addToWishlist(
             @RequestBody AddToWishlistRequest request,
             @AuthenticationPrincipal Object principal) { // Inject principal
@@ -75,7 +75,7 @@ public class NotificationController {
     }
 
     @GetMapping("/wishlist")
-    @PreAuthorize("hasRole('TENANT')")
+    @PreAuthorize("hasAuthority('TENANT')")
     public ResponseEntity<ApiResponse<List<WishlistItemDto>>> getWishlist(
             @AuthenticationPrincipal Object principal) {
         UUID tenantUserId = getCurrentUserId(principal);
@@ -89,7 +89,7 @@ public class NotificationController {
     }
 
     @DeleteMapping("/wishlist/{propertyId}")
-    @PreAuthorize("hasRole('TENANT')")
+    @PreAuthorize("hasAuthority('TENANT')")
     public ResponseEntity<ApiResponse<Void>> removeFromWishlist(
             @PathVariable UUID propertyId,
             @AuthenticationPrincipal Object principal) {
@@ -135,7 +135,7 @@ public class NotificationController {
     }
 
     @PostMapping("/notifications/rentalUpdate")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<NotificationDto>> rentalUpdateNotification(
             @RequestBody RentalUpdateRequest request,
             @AuthenticationPrincipal Object principal) {
@@ -156,7 +156,7 @@ public class NotificationController {
     }
 
     @PostMapping("/notifications/vacancy")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<List<NotificationDto>>> sendVacancyNotification(
             @RequestBody VacancyUpdateNotification request,
             @AuthenticationPrincipal Object principal) throws ServiceInteractionException, ServiceUnavailableException, ResourceNotFoundException {
@@ -169,7 +169,7 @@ public class NotificationController {
     }
 
     @PostMapping("/notifications/broadcast")
-    @PreAuthorize("hasRole('ADMIN')") // Only Admins can broadcast
+    @PreAuthorize("hasAuthority('ADMIN')") // Only Admins can broadcast
     public ResponseEntity<ApiResponse<NotificationDto>> sendBroadcastNotification(
             @RequestBody BroadcastNotificationRequest request) throws ServiceInteractionException, ServiceUnavailableException {
         log.info("API Request: Admin sending broadcast notification");
