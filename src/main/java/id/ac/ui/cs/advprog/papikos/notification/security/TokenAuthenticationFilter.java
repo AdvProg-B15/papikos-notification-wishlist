@@ -103,7 +103,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
                         if (roleFromAuth != null && !roleFromAuth.isEmpty()) {
                             authorities = Collections.singletonList(new SimpleGrantedAuthority(roleFromAuth));
-                            logger.info("Setting authority for user {} as: {}", verifyTokenResponse.data.userId, authorityString);
+                            logger.info("Setting authority for user {}", verifyTokenResponse.data.userId);
                         } else {
                             authorities = Collections.emptyList(); // Tidak ada role, tidak ada authority spesifik
                             logger.warn("Role from auth service is null or empty for user ID: {}. Assigning no specific authorities.", verifyTokenResponse.data.userId);
