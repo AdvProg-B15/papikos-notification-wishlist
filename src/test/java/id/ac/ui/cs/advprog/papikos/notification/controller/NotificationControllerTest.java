@@ -11,6 +11,7 @@ import id.ac.ui.cs.advprog.papikos.notification.dto.AddToWishlistRequest;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ConflictException;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ResourceNotFoundException;
+import id.ac.ui.cs.advprog.papikos.notification.exception.ServiceInteractionException;
 import id.ac.ui.cs.advprog.papikos.notification.model.Notification;
 import id.ac.ui.cs.advprog.papikos.notification.model.NotificationType;
 import id.ac.ui.cs.advprog.papikos.notification.model.WishlistItem;
@@ -102,16 +103,11 @@ class NotificationControllerTest {
 
     @Test
     @DisplayName("POST /wishlist - Success (201 Created)")
-    // @WithMockUser(username = "user-tenant-123", roles = {"TENANT"}) // Example security
-    void addWishlistItem_Success() throws Exception {
+    void addWishlistItem_Success() throws Exception, ServiceInteractionException {
         when(notificationService.addToWishlist(eq(getCurrentUserId()), any(AddToWishlistRequest.class)))
                 .thenReturn(wishlistItemDto);
-        // Mock DTO mapping if separate mapper exists
-        // when(notificationMapper.toWishlistItemDto(wishlistItem)).thenReturn(wishlistItemDto);
 
         mockMvc.perform(post("/wishlist")
-                        // .with(SecurityMockMvcRequestPostProcessors.csrf()) // If CSRF enabled
-                        // .principal(() -> tenantUserId) // Basic way to set principal if not using full security mock
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(addToWishlistRequest)))
                 .andExpect(status().isCreated())
@@ -124,8 +120,7 @@ class NotificationControllerTest {
 
     @Test
     @DisplayName("POST /wishlist - Property Not Found (404 Not Found)")
-    // @WithMockUser(roles = {"TENANT"})
-    void addWishlistItem_PropertyNotFound() throws Exception {
+    void addWishlistItem_PropertyNotFound() throws Exception, ServiceInteractionException {
         when(notificationService.addToWishlist(eq(getCurrentUserId()), any(AddToWishlistRequest.class)))
                 .thenThrow(new ResourceNotFoundException("Property not found: " + propertyId1, null));
 
@@ -139,8 +134,7 @@ class NotificationControllerTest {
 
     @Test
     @DisplayName("POST /wishlist - Already Exists (409 Conflict)")
-    // @WithMockUser(roles = {"TENANT"})
-    void addWishlistItem_AlreadyExists() throws Exception {
+    void addWishlistItem_AlreadyExists() throws Exception, ServiceInteractionException {
         when(notificationService.addToWishlist(eq(getCurrentUserId()), any(AddToWishlistRequest.class)))
                 .thenThrow(new ConflictException("Item already in wishlist"));
 

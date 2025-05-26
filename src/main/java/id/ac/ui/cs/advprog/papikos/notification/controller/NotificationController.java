@@ -45,6 +45,11 @@ public class NotificationController {
         log.error("Unexpected principal type: {}", principal.getClass().getName());
         throw new IllegalStateException("Cannot determine current user ID");
     }
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        log.info("Health check endpoint called");
+        return ResponseEntity.ok("Notification Service is running");
+    }
 
     // === Wishlist Endpoints ===
 
@@ -154,7 +159,7 @@ public class NotificationController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<NotificationDto>>> sendVacancyNotification(
             @RequestBody VacancyUpdateNotification request,
-            @AuthenticationPrincipal Object principal) {
+            @AuthenticationPrincipal Object principal) throws ServiceInteractionException, ServiceUnavailableException, ResourceNotFoundException {
         log.info("API Request: User {} sending vacancy notification {}", principal, request);
         List<NotificationDto> notifications = notificationService.notifyWishlistUsersOnVacancy(request);
 
@@ -166,7 +171,7 @@ public class NotificationController {
     @PostMapping("/notifications/broadcast")
     @PreAuthorize("hasRole('ADMIN')") // Only Admins can broadcast
     public ResponseEntity<ApiResponse<NotificationDto>> sendBroadcastNotification(
-            @RequestBody BroadcastNotificationRequest request) {
+            @RequestBody BroadcastNotificationRequest request) throws ServiceInteractionException, ServiceUnavailableException {
         log.info("API Request: Admin sending broadcast notification");
         NotificationDto notificationDto = notificationService.sendBroadcastNotification(request);
 
@@ -178,3 +183,4 @@ public class NotificationController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }
+

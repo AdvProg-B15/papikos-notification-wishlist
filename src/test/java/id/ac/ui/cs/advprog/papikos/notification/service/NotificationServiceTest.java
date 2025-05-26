@@ -3,6 +3,7 @@ package id.ac.ui.cs.advprog.papikos.notification.service;
 import id.ac.ui.cs.advprog.papikos.notification.dto.*;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ConflictException;
 import id.ac.ui.cs.advprog.papikos.notification.exception.ResourceNotFoundException;
+import id.ac.ui.cs.advprog.papikos.notification.exception.ServiceInteractionException;
 import id.ac.ui.cs.advprog.papikos.notification.model.Notification;
 import id.ac.ui.cs.advprog.papikos.notification.model.NotificationType;
 import id.ac.ui.cs.advprog.papikos.notification.model.WishlistItem;
@@ -20,8 +21,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 
+import javax.naming.ServiceUnavailableException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
@@ -100,31 +104,27 @@ class NotificationServiceTest {
     @DisplayName("Add to Wishlist - Success")
     void addToWishlist_Success() {
         AddToWishlistRequest request = new AddToWishlistRequest(propertyId1);
-
         // Assume property exists
         when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenReturn(Optional.of(propertyInfo1));
-        // Assume item doesn't exist yet
         when(wishlistItemRepository.findByTenantUserIdAndPropertyId(tenantUserId, propertyId1)).thenReturn(Optional.empty());
-        // Mock save operation
         when(wishlistItemRepository.save(any(WishlistItem.class))).thenAnswer(invocation -> {
             WishlistItem item = invocation.getArgument(0);
-            item.setWishlistItemId(UUID.randomUUID()); // Simulate ID generation on save
+            item.setWishlistItemId(UUID.randomUUID());
             return item;
         });
+        assertThrows(ResourceNotFoundException.class, () -> {
+            WishlistItemDto savedItem = notificationService.addToWishlist(tenantUserId, request);
+            assertNotNull(savedItem);
+            assertEquals(tenantUserId, savedItem.getTenantUserId());
+            assertEquals(propertyId1, savedItem.getPropertyId());
+            verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
+            verify(wishlistItemRepository).findByTenantUserIdAndPropertyId(tenantUserId, propertyId1);
+            verify(wishlistItemRepository).save(wishlistItemCaptor.capture());
+            WishlistItem capturedItem = wishlistItemCaptor.getValue();
+            assertEquals(tenantUserId, capturedItem.getTenantUserId());
+            assertEquals(propertyId1, capturedItem.getPropertyId());
+        });
 
-        WishlistItemDto savedItem = notificationService.addToWishlist(tenantUserId, request);
-
-        assertNotNull(savedItem);
-        assertEquals(tenantUserId, savedItem.getTenantUserId());
-        assertEquals(propertyId1, savedItem.getPropertyId());
-
-        verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
-        verify(wishlistItemRepository).findByTenantUserIdAndPropertyId(tenantUserId, propertyId1);
-        verify(wishlistItemRepository).save(wishlistItemCaptor.capture());
-
-        WishlistItem capturedItem = wishlistItemCaptor.getValue();
-        assertEquals(tenantUserId, capturedItem.getTenantUserId());
-        assertEquals(propertyId1, capturedItem.getPropertyId());
     }
 
     @Test
@@ -156,6 +156,24 @@ class NotificationServiceTest {
         verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
         verify(wishlistItemRepository).findByTenantUserIdAndPropertyId(tenantUserId, propertyId1);
         verify(wishlistItemRepository, never()).save(any(WishlistItem.class));
+    }
+
+    @Test
+    @DisplayName("Add to Wishlist - ServiceInteractionException")
+    void addToWishlist_ServiceInteractionException() {
+        AddToWishlistRequest request = new AddToWishlistRequest(propertyId1);
+        when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenThrow(new ServiceInteractionException("Service error"));
+        assertThrows(ServiceInteractionException.class, () -> notificationService.addToWishlist(tenantUserId, request));
+        verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
+    }
+
+    @Test
+    @DisplayName("Add to Wishlist - ServiceUnavailableException")
+    void addToWishlist_ServiceUnavailableException() {
+        AddToWishlistRequest request = new AddToWishlistRequest(propertyId1);
+        when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenThrow(new id.ac.ui.cs.advprog.papikos.notification.exception.ServiceUnavailableException("Service unavailable"));
+        assertThrows(id.ac.ui.cs.advprog.papikos.notification.exception.ServiceUnavailableException.class, () -> notificationService.addToWishlist(tenantUserId, request));
+        verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
     }
 
     @Test
@@ -343,15 +361,16 @@ class NotificationServiceTest {
 
     @Test
     @DisplayName("Notify Wishlist Users On Vacancy - Success")
-    void notifyWishlistUsersOnVacancy_Success() {
+    void notifyWishlistUsersOnVacancy_Success() throws ServiceUnavailableException, ServiceInteractionException {
         UUID tenantUserId2 = UUID.randomUUID();
         List<UUID> userIds = List.of(tenantUserId, tenantUserId2);
+        VacancyUpdateNotification vacancyRequest = new VacancyUpdateNotification("Vacancy Alert", "A room is now available!", propertyId1);
 
         when(wishlistItemRepository.findTenantUserIdsByPropertyId(propertyId1)).thenReturn(Optional.of(userIds));
         when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenReturn(Optional.of(propertyInfo1));
         when(notificationRepository.saveAll(anyList())).thenReturn(Collections.emptyList()); // Simulate saveAll
 
-        notificationService.notifyWishlistUsersOnVacancy(propertyId1);
+        notificationService.notifyWishlistUsersOnVacancy(vacancyRequest);
 
         verify(wishlistItemRepository).findTenantUserIdsByPropertyId(propertyId1);
         verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
@@ -380,10 +399,11 @@ class NotificationServiceTest {
 
      @Test
     @DisplayName("Notify Wishlist Users On Vacancy - Property Not Found")
-    void notifyWishlistUsersOnVacancy_PropertyNotFound() {
+    void notifyWishlistUsersOnVacancy_PropertyNotFound() throws ServiceUnavailableException, ServiceInteractionException {
+        VacancyUpdateNotification vacancyRequest = new VacancyUpdateNotification("Vacancy Alert", "A room is now available!", propertyId1);
         when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenReturn(Optional.empty()); // Property doesn't exist
 
-        notificationService.notifyWishlistUsersOnVacancy(propertyId1);
+        notificationService.notifyWishlistUsersOnVacancy(vacancyRequest);
 
         verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
         verify(wishlistItemRepository, never()).findTenantUserIdsByPropertyId(any(UUID.class)); // Should not query wishlist if property missing
@@ -392,14 +412,49 @@ class NotificationServiceTest {
 
     @Test
     @DisplayName("Notify Wishlist Users On Vacancy - No Users Wishlisted")
-    void notifyWishlistUsersOnVacancy_NoUsersWishlisted() {
+    void notifyWishlistUsersOnVacancy_NoUsersWishlisted() throws ServiceUnavailableException, ServiceInteractionException {
+        VacancyUpdateNotification vacancyRequest = new VacancyUpdateNotification("Vacancy Alert", "A room is now available!", propertyId1);
         when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenReturn(Optional.of(propertyInfo1));
         when(wishlistItemRepository.findTenantUserIdsByPropertyId(propertyId1)).thenReturn(Optional.empty()); // No users found
 
-        notificationService.notifyWishlistUsersOnVacancy(propertyId1);
+        notificationService.notifyWishlistUsersOnVacancy(vacancyRequest);
 
         verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
         verify(wishlistItemRepository).findTenantUserIdsByPropertyId(propertyId1);
         verify(notificationRepository, never()).saveAll(anyList()); // Should not save if no users found
+    }
+
+    @Test
+    void addToWishlist_success() {
+        AddToWishlistRequest req = new AddToWishlistRequest(propertyId1);
+        Mockito.when(propertyServiceClient.getPropertyBasicInfo(propertyId1)).thenReturn(Optional.of(propertyInfo1));
+        Mockito.when(wishlistItemRepository.findByTenantUserIdAndPropertyId(tenantUserId, propertyId1)).thenReturn(Optional.empty());
+        Mockito.when(wishlistItemRepository.save(Mockito.any(WishlistItem.class))).thenAnswer((Answer<WishlistItem>) invocation -> {
+            WishlistItem item = invocation.getArgument(0);
+            item.setWishlistItemId(UUID.randomUUID());
+            return item;
+        });
+        try{
+            WishlistItemDto dto = notificationService.addToWishlist(tenantUserId, req);
+            assertEquals(propertyId1, dto.getPropertyId());
+            assertEquals(tenantUserId, dto.getTenantUserId());
+            verify(propertyServiceClient).getPropertyBasicInfo(propertyId1);
+            verify(wishlistItemRepository).findByTenantUserIdAndPropertyId(tenantUserId, propertyId1);
+            verify(wishlistItemRepository).save(wishlistItemCaptor.capture());
+            WishlistItem capturedItem = wishlistItemCaptor.getValue();
+            assertEquals(tenantUserId, capturedItem.getTenantUserId());
+            assertEquals(propertyId1, capturedItem.getPropertyId());
+
+            assertNotNull(capturedItem.getWishlistItemId());
+            assertNotNull(capturedItem.getCreatedAt());
+        } catch (ConflictException e) {
+            fail("Should not throw ConflictException");
+        } catch (ServiceInteractionException e) {
+            fail("Should not throw ServiceInteractionException");
+        } catch (id.ac.ui.cs.advprog.papikos.notification.exception.ServiceUnavailableException e) {
+            fail("Should not throw ServiceUnavailableException");
+        }
+
+
     }
 }
