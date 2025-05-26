@@ -33,8 +33,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
 				.requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
-                                .requestMatchers("/notifications/**").authenticated()
-                                .requestMatchers("/wishlist/**").authenticated()
+//                                .requestMatchers("/notifications/**").authenticated()
+//                                .requestMatchers("/wishlist/**").authenticated()
                                 // All other requests must be authenticated
                                 .anyRequest().authenticated()
                 )

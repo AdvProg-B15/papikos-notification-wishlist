@@ -6,8 +6,6 @@ import id.ac.ui.cs.advprog.papikos.notification.exception.ServiceInteractionExce
 import id.ac.ui.cs.advprog.papikos.notification.exception.ServiceUnavailableException;
 import id.ac.ui.cs.advprog.papikos.notification.response.ApiResponse;
 import id.ac.ui.cs.advprog.papikos.notification.service.NotificationService;
-//import jakarta.validation.Valid;
-//import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import lombok.Data;
 import java.util.List;
 import java.util.UUID;
 
@@ -66,12 +63,9 @@ public class NotificationController {
                     .created(createdItem);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
-        } catch (ServiceInteractionException e) {
-            throw new RuntimeException(e);
-        } catch (ServiceUnavailableException e) {
+        } catch (ServiceInteractionException | ServiceUnavailableException e) {
             throw new RuntimeException(e);
         }
-
     }
 
     @GetMapping("/wishlist")
@@ -145,11 +139,7 @@ public class NotificationController {
             ApiResponse<NotificationDto> response = ApiResponse.<NotificationDto>builder()
                     .ok(notificationDto);
             return ResponseEntity.ok(response);
-        } catch (ServiceInteractionException e) {
-            throw new RuntimeException(e);
-        } catch (ServiceUnavailableException e) {
-            throw new RuntimeException(e);
-        } catch (ResourceNotFoundException e) {
+        } catch (ServiceInteractionException | ServiceUnavailableException | ResourceNotFoundException e) {
             throw new RuntimeException(e);
         }
 

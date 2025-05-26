@@ -28,6 +28,8 @@ public class KosDetailsDto {
 
     private int numRooms;
 
+    private int occupiedRooms;
+
     @JsonProperty("isListed")
     private boolean isListed;
 
