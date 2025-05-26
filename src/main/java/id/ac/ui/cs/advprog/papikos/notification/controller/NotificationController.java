@@ -129,7 +129,7 @@ public class NotificationController {
     }
 
     @PostMapping("/notifications/rentalUpdate")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN', 'INTERNAL')")
     public ResponseEntity<ApiResponse<NotificationDto>> rentalUpdateNotification(
             @RequestBody RentalUpdateRequest request,
             @AuthenticationPrincipal Object principal) {
