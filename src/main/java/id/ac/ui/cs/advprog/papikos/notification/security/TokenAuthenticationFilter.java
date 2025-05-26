@@ -102,9 +102,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                         List<SimpleGrantedAuthority> authorities;
 
                         if (roleFromAuth != null && !roleFromAuth.isEmpty()) {
-                            // Tambahkan prefix "ROLE_" jika belum ada
-                            String authorityString = roleFromAuth.startsWith("ROLE_") ? roleFromAuth : "ROLE_" + roleFromAuth.toUpperCase();
-                            authorities = Collections.singletonList(new SimpleGrantedAuthority(authorityString));
+                            authorities = Collections.singletonList(new SimpleGrantedAuthority(roleFromAuth));
                             logger.info("Setting authority for user {} as: {}", verifyTokenResponse.data.userId, authorityString);
                         } else {
                             authorities = Collections.emptyList(); // Tidak ada role, tidak ada authority spesifik
