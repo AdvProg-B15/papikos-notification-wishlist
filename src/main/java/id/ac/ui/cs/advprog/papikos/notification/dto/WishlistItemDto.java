@@ -1,8 +1,6 @@
 package id.ac.ui.cs.advprog.papikos.notification.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.Instant;
@@ -11,6 +9,7 @@ import java.util.UUID;
  * DTO representing an item retrieved from a tenant's wishlist,
  * including embedded summary information about the property.
  */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
