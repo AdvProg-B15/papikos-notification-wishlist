@@ -17,13 +17,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-import id.ac.ui.cs.advprog.papikos.notification.client.PropertyServiceClient;
 
 @RestController
 @RequestMapping("/api/v1") // Assuming a base path
 @RequiredArgsConstructor
 public class NotificationController {
-    private final PropertyServiceClient propertyServiceClient = new PropertyServiceClient();
 
     private static final Logger log = LoggerFactory.getLogger(NotificationController.class);
     private final NotificationService notificationService;
